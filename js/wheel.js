@@ -48,6 +48,7 @@ export class WheelEngine {
     const size = Math.min(rect.width || 480, 560);
     this.canvas.width = size * dpr;
     this.canvas.height = size * dpr;
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform before scaling
     this.ctx.scale(dpr, dpr);
     this.displaySize = size;
   }
@@ -62,6 +63,18 @@ export class WheelEngine {
       this.paletteName = paletteName;
       this.draw();
     }
+  }
+
+  /**
+   * Calculate the exact slice index currently aligned with the pointer at pointerAngle (default 0 rad = 3 o'clock)
+   */
+  getSliceIndexAtAngle(pointerAngle = 0) {
+    if (this.items.length === 0) return -1;
+    const sliceAngle = (Math.PI * 2) / this.items.length;
+    const normalize = (a) => ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    // In wheel local frame: localAngle = pointerAngle - currentAngle
+    const localAngle = normalize(pointerAngle - this.currentAngle);
+    return Math.floor(localAngle / sliceAngle) % this.items.length;
   }
 
   draw() {
@@ -172,23 +185,28 @@ export class WheelEngine {
     this.isSpinning = true;
     sounds.ensureContextActive();
 
-    // The pointer sits at the 3 o'clock position (angle 0 in standard polar coordinates)
+    const normalize = (a) => ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     const sliceAngle = (Math.PI * 2) / this.items.length;
 
-    // Pick a random winner index
-    const winnerIndex = Math.floor(Math.random() * this.items.length);
+    // 1. Pick a random target winner index
+    const targetWinnerIndex = Math.floor(Math.random() * this.items.length);
 
-    // Calculate target angle so the winning slice is centered under the 3 o'clock pointer (Angle 0)
-    // Slice i occupies: [angle + i*sliceAngle, angle + (i+1)*sliceAngle]
-    // Center of slice i: angle + (i + 0.5)*sliceAngle
-    // To align with Angle 0 (or 2*PI*k):
-    // targetAngle = - (winnerIndex + 0.5) * sliceAngle + (random offset within slice)
-    const randomOffsetInSlice = (Math.random() - 0.5) * (sliceAngle * 0.7);
-    const targetSliceCenter = (winnerIndex + 0.5) * sliceAngle + randomOffsetInSlice;
+    // 2. Calculate target local angle inside that winning slice (with safe middle jitter)
+    const randomOffsetInSlice = (Math.random() - 0.5) * (sliceAngle * 0.6);
+    const targetLocalAngle = (targetWinnerIndex + 0.5) * sliceAngle + randomOffsetInSlice;
 
-    // Minimum full spins for excitement (5 to 8 rotations)
+    // 3. Pointer is at 3 o'clock (0 rad). We want normalize(0 - finalAngle) === targetLocalAngle
+    // => finalAngleNorm = normalize(-targetLocalAngle)
+    const finalAngleNorm = normalize(-targetLocalAngle);
+    const currentAngleNorm = normalize(this.currentAngle);
+
+    // Forward angular distance needed to align the slice with pointer
+    let forwardDelta = normalize(finalAngleNorm - currentAngleNorm);
+    if (forwardDelta < 0.001) forwardDelta += Math.PI * 2;
+
+    // Add 6 to 8 full revolutions for thrilling spin
     const fullSpins = Math.floor(Math.random() * 3) + 6;
-    const totalRotation = fullSpins * Math.PI * 2 + (Math.PI * 2 - (targetSliceCenter % (Math.PI * 2)));
+    const totalRotation = fullSpins * (Math.PI * 2) + forwardDelta;
 
     const startAngle = this.currentAngle;
     const finalAngle = startAngle + totalRotation;
@@ -199,7 +217,7 @@ export class WheelEngine {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / durationMs, 1);
 
-      // Ease-out cubic curve: 1 - (1-t)^3
+      // Smooth Ease-out cubic deceleration: 1 - (1-t)^3
       const easeProgress = 1 - Math.pow(1 - progress, 3);
       this.currentAngle = startAngle + (finalAngle - startAngle) * easeProgress;
 
@@ -210,13 +228,15 @@ export class WheelEngine {
         requestAnimationFrame(animate);
       } else {
         this.isSpinning = false;
-        this.currentAngle = finalAngle % (Math.PI * 2);
+        this.currentAngle = normalize(finalAngle);
         this.draw();
 
-        // Selected winner
-        const winner = this.items[winnerIndex];
+        // Exact winner directly queried from pointer position at resting angle
+        const restingWinnerIndex = this.getSliceIndexAtAngle(0);
+        const winner = this.items[restingWinnerIndex] || this.items[targetWinnerIndex];
+
         if (this.onWinnerSelected) {
-          this.onWinnerSelected(winner, winnerIndex);
+          this.onWinnerSelected(winner, restingWinnerIndex);
         }
       }
     };
@@ -227,14 +247,11 @@ export class WheelEngine {
 
   checkPointerTick() {
     if (this.items.length === 0) return;
-    const sliceAngle = (Math.PI * 2) / this.items.length;
-    // Current angle normalized to [0, 2PI)
-    const normalizedAngle = (Math.PI * 2 - (this.currentAngle % (Math.PI * 2))) % (Math.PI * 2);
-    const currentSliceIndex = Math.floor(normalizedAngle / sliceAngle);
+    const currentSliceIndex = this.getSliceIndexAtAngle(0);
 
     if (currentSliceIndex !== this.lastTickIndex) {
       this.lastTickIndex = currentSliceIndex;
-      sounds.playTick(500 + (currentSliceIndex % 4) * 50);
+      sounds.playTick(520 + (currentSliceIndex % 5) * 40);
 
       if (this.pointerEl) {
         this.pointerEl.classList.remove('ticking');
