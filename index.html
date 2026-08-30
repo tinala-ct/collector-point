@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎯 วงล้อสุ่มชื่อ & สะสมคะแนนห้องเรียน (Classroom Lucky Wheel)</title>
+  <meta name="description" content="เครื่องมือสุ่มชื่อนักเรียนด้วยวงล้อหมุน พร้อมระบบเก็บคะแนนตอบถูก-ตอบผิด สรุปสถิติ Max/Min/Avg มอบรางวัล และ Export ผลคะแนน">
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/wheel.css">
+  <link rel="stylesheet" href="css/scoreboard.css">
+</head>
+<body>
+
+  <!-- Top App Header -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-icon">🎡</div>
+      <div class="brand-text">
+        <h1>Classroom Lucky Wheel</h1>
+        <p>วงล้อสุ่มชื่อ & ระบบสะสมคะแนนในชั้นเรียน</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <!-- Class Selector -->
+      <div class="class-picker" title="เลือกห้องเรียน">
+        <span>🏫</span>
+        <select id="classSelect" aria-label="เลือกห้องเรียน"></select>
+        <button id="manageClassesBtn" class="btn btn-outline btn-sm" title="จัดการห้องเรียน / เพิ่มห้องใหม่">⚙️ ห้อง</button>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <button id="settingsModalBtn" class="btn btn-outline btn-sm" title="ตั้งค่าจำนวนข้อและคะแนน">
+        ⚙️ ตั้งค่าเกม
+      </button>
+
+      <button id="finishGameBtn" class="btn btn-secondary btn-sm" title="จบเกมและดูสรุปรางวัล">
+        🏆 สรุปผลรางวัล
+      </button>
+
+      <button id="newGameBtn" class="btn btn-outline btn-sm" title="เริ่มเกมใหม่">
+        🔄 เริ่มรอบใหม่
+      </button>
+
+      <button id="themeToggleBtn" class="btn btn-outline btn-icon" title="สลับโหมดมืด/สว่าง">
+        🌙
+      </button>
+
+      <button id="fullscreenBtn" class="btn btn-outline btn-icon" title="โหมดเต็มหน้าจอสำหรับฉายโปรเจกเตอร์">
+        ⛶
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="app-container">
+
+    <!-- Left/Center Wheel Stage -->
+    <section class="stage-panel">
+      <!-- Game Status Bar -->
+      <div class="game-status-bar">
+        <div class="round-badge">
+          <span>🎯 คำถามข้อที่:</span>
+          <span class="pill"><span id="currentRoundBadge">1</span> / <span id="totalRoundsBadge">10</span></span>
+        </div>
+
+        <div class="points-badge">
+          <span>คะแนนข้อนี้:</span>
+          <strong>+<span id="pointsPerQBadge">1</span> แต้ม</strong>
+        </div>
+
+        <div class="shortcut-tip">
+          <span>💡 กด</span> <kbd>Spacebar</kbd> <span>เพื่อหมุนวงล้อ</span>
+        </div>
+      </div>
+
+      <!-- Interactive Canvas Wheel Card -->
+      <div class="wheel-card">
+        <div class="wheel-wrapper">
+          <canvas id="wheelCanvas"></canvas>
+          
+          <!-- Wheel Pointer Indicator -->
+          <div class="wheel-pointer-container">
+            <div class="wheel-pointer"></div>
+          </div>
+
+          <!-- Center Glowing Spin Button -->
+          <button id="centerSpinBtn" class="wheel-center-btn" title="คลิกเพื่อหมุนวงล้อ">
+            SPIN
+            <span>หมุนเลย!</span>
+          </button>
+        </div>
+
+        <!-- Empty Wheel Alert -->
+        <div id="emptyWheelMsg" class="wheel-empty-msg">
+          <div style="font-size: 2.5rem;">👥</div>
+          <h4>ไม่มีรายชื่อในวงล้อ</h4>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">กรุณาเพิ่มชื่อนักเรียนหรือเปิดใช้งานรายชื่อในแถบด้านขวา</p>
+        </div>
+
+        <!-- Wheel Bottom Controls -->
+        <div class="wheel-controls">
+          <button id="spinBtn" class="btn btn-primary btn-lg">
+            🎡 หมุนวงล้อสุ่มชื่อ (Space)
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Sidebar / Management & Leaderboard -->
+    <aside class="sidebar-panel">
+      <!-- Tabs Navigation -->
+      <nav class="tab-nav">
+        <button class="tab-btn active" data-tab="scores">
+          🏆 ตารางคะแนนสด
+        </button>
+        <button class="tab-btn" data-tab="students">
+          👥 จัดการรายชื่อ
+        </button>
+        <button class="tab-btn" data-tab="history">
+          📜 ประวัติ
+        </button>
+      </nav>
+
+      <!-- Tab 1: Live Scores -->
+      <div id="tab-scores" class="tab-content active">
+        <div class="scoreboard-header">
+          <h3 style="font-size: 0.95rem; font-weight: 700;">คะแนนสะสมสด (Live Ranking)</h3>
+          <button id="resetScoresBtn" class="btn btn-outline btn-sm" title="ล้างคะแนนทุกคนเป็น 0 เพื่อเริ่มเก็บใหม่">
+            ล้างคะแนน
+          </button>
+        </div>
+
+        <div class="scoreboard-table-wrap">
+          <table class="score-table">
+            <thead>
+              <tr>
+                <th style="width: 40px; text-align: center;">#</th>
+                <th>ชื่อนักเรียน</th>
+                <th style="text-align: center;">คะแนน</th>
+                <th style="text-align: center;">ตอบถูก</th>
+              </tr>
+            </thead>
+            <tbody id="scoreboardBody">
+              <!-- Dynamically rendered -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab 2: Student Management -->
+      <div id="tab-students" class="tab-content">
+        <!-- Add Single Student -->
+        <div class="input-group">
+          <input type="text" id="newStudentInput" class="input-text" placeholder="พิมพ์ชื่อนักเรียนแล้วกด Enter...">
+          <button id="addStudentBtn" class="btn btn-primary btn-sm">➕ เพิ่ม</button>
+        </div>
+
+        <!-- Student Action Buttons -->
+        <div class="roster-actions">
+          <button id="shuffleBtn" class="btn btn-outline btn-sm" title="สลับตำแหน่งสีในวงล้อ">
+            🔀 สลับตำแหน่ง
+          </button>
+        </div>
+
+        <!-- Active Students List -->
+        <ul id="studentsList" class="students-list">
+          <!-- Dynamically rendered -->
+        </ul>
+
+        <!-- Bulk Paste Section -->
+        <div style="margin-top: auto; padding-top: 0.75rem; border-top: 1px dashed var(--border-color);">
+          <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.35rem; display: block;">
+            📋 วางรายชื่อทั้งห้อง (1 บรรทัดต่อ 1 คน):
+          </label>
+          <textarea id="bulkTextarea" class="bulk-textarea" placeholder="สมชาย ใจดี&#10;สมหญิง รักเรียน&#10;กิตติศักดิ์ ชูใจ"></textarea>
+          <button id="applyBulkBtn" class="btn btn-outline btn-sm" style="width: 100%; margin-top: 0.4rem;">
+            💾 นำเข้ารายชื่อทั้งหมด
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab 3: Question History -->
+      <div id="tab-history" class="tab-content">
+        <h3 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.5rem;">บันทึกการตอบในคาบนี้</h3>
+        <div id="historyList" class="history-timeline">
+          <!-- Dynamically rendered -->
+        </div>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- ==========================================================================
+       MODAL 1: ANSWER / SCORING PROMPT (ป๊อปอัปให้คะแนน)
+       ========================================================================== -->
+  <div id="answerModal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">🎉 สุ่มได้ผู้โชคดี!</div>
+      </div>
+
+      <div class="modal-body">
+        <div class="winner-banner">
+          <div class="winner-avatar">🎓</div>
+          <div id="winnerNameDisplay" class="winner-name">ชื่อนักเรียน</div>
+          <div id="winnerCurrentScore" class="winner-current-score">คะแนนสะสม: 0 คะแนน</div>
+        </div>
+
+        <!-- Scoring Choices -->
+        <div class="scoring-actions-grid">
+          <!-- Correct Button -->
+          <button id="correctBtn" class="scoring-btn btn-correct">
+            <span class="btn-icon-lg">✅</span>
+            <span class="btn-text-main">ตอบถูก</span>
+            <span id="correctPointsLabel" class="btn-text-sub">+1 คะแนน</span>
+          </button>
+
+          <!-- Wrong Button -->
+          <button id="wrongBtn" class="scoring-btn btn-wrong">
+            <span class="btn-icon-lg">❌</span>
+            <span class="btn-text-main">ตอบผิด</span>
+            <span class="btn-text-sub">0 คะแนน</span>
+          </button>
+        </div>
+
+        <!-- Extra / Bonus / Skip -->
+        <div class="scoring-extra-options">
+          <button id="bonusBtn" class="btn btn-outline btn-sm" style="color: var(--accent);">
+            ⭐ ตอบถูกยอดเยี่ยม (+โบนัส)
+          </button>
+          <button id="skipBtn" class="btn btn-outline btn-sm">
+            ⏭️ ข้าม / ไม่อยู่
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 2: GAME SUMMARY & AWARDS PODIUM (สรุปผลการแข่งขัน & สถิติห้อง)
+       ========================================================================== -->
+  <div id="summaryModal" class="modal-backdrop">
+    <div class="modal-dialog summary-dialog">
+      <div class="modal-header">
+        <div class="modal-title">🏆 สรุปผลคะแนนและมอบรางวัล</div>
+        <button id="closeSummaryBtn" class="btn btn-outline btn-sm">✕ ปิด</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="summary-header-banner">
+          <h2>🎉 ยินดีกับผู้ชนะประจำคาบเรียน! 🎉</h2>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">ผลคะแนนการมีส่วนร่วมและตอบคำถามกิจกรรมวงล้อ</p>
+        </div>
+
+        <!-- Grand Podium (1st, 2nd, 3rd) -->
+        <div class="podium-container">
+          <!-- 2nd Place -->
+          <div class="podium-place podium-2">
+            <div class="podium-crown">🥈</div>
+            <div id="podium2Name" class="podium-name">-</div>
+            <div id="podium2Score" class="podium-score">-</div>
+            <div class="podium-block">2</div>
+          </div>
+
+          <!-- 1st Place -->
+          <div class="podium-place podium-1">
+            <div class="podium-crown">👑 🥇</div>
+            <div id="podium1Name" class="podium-name">-</div>
+            <div id="podium1Score" class="podium-score">-</div>
+            <div class="podium-block">1</div>
+          </div>
+
+          <!-- 3rd Place -->
+          <div class="podium-place podium-3">
+            <div class="podium-crown">🥉</div>
+            <div id="podium3Name" class="podium-name">-</div>
+            <div id="podium3Score" class="podium-score">-</div>
+            <div class="podium-block">3</div>
+          </div>
+        </div>
+
+        <!-- Class Statistics Cards -->
+        <div class="stats-grid">
+          <div class="stat-card stat-max">
+            <span class="stat-label">🏆 คะแนนสูงสุด</span>
+            <span id="summaryMaxScore" class="stat-value">0</span>
+          </div>
+          <div class="stat-card stat-min">
+            <span class="stat-label">🎯 คะแนนต่ำสุด</span>
+            <span id="summaryMinScore" class="stat-value">0</span>
+          </div>
+          <div class="stat-card stat-avg">
+            <span class="stat-label">📊 คะแนนเฉลี่ยห้อง</span>
+            <span id="summaryAvgScore" class="stat-value">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">📈 อัตราตอบถูก</span>
+            <span id="summaryAccuracy" class="stat-value">0%</span>
+          </div>
+        </div>
+
+        <!-- Cute Special Badges -->
+        <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.6rem;">🎖️ รางวัลพิเศษและฉายาประจำคาบ</h4>
+        <div id="summaryAwardsList" class="awards-grid">
+          <!-- Dynamically generated cute badges -->
+        </div>
+
+        <!-- Full Ranking Table -->
+        <h4 style="font-size: 0.95rem; font-weight: 700; margin: 1rem 0 0.5rem 0;">📋 ตารางอันดับคะแนนทั้งห้อง</h4>
+        <div class="scoreboard-table-wrap" style="max-height: 200px;">
+          <table class="score-table">
+            <thead>
+              <tr>
+                <th style="width: 40px; text-align: center;">อันดับ</th>
+                <th>ชื่อ-นามสกุล</th>
+                <th style="text-align: center;">คะแนนสะสม</th>
+                <th style="text-align: center;">ตอบถูก/ตอบทั้งหมด</th>
+              </tr>
+            </thead>
+            <tbody id="summaryRankingBody">
+              <!-- Dynamically rendered -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="exportCsvBtn" class="btn btn-outline">
+          📥 ดาวน์โหลด Excel/CSV
+        </button>
+        <button id="printReportBtn" class="btn btn-outline">
+          🖨️ พิมพ์ใบสรุปผล
+        </button>
+        <button id="summaryPlayAgainBtn" class="btn btn-primary">
+          🔄 เล่นรอบใหม่
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 3: GAME SETTINGS (ตั้งค่าเกม)
+       ========================================================================== -->
+  <div id="settingsModal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">⚙️ ตั้งค่าเกมและกติกาคะแนน</div>
+        <button id="closeSettingsBtn" class="btn btn-outline btn-sm">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="settings-grid">
+          <div class="form-field">
+            <label for="settingQuestions">
+              <span>จำนวนข้อทั้งหมดในคาบ:</span>
+            </label>
+            <input type="number" id="settingQuestions" class="input-text" min="1" max="100" value="10">
+            <span class="help-text">เมื่อเล่นครบจำนวนข้อนี้ ระบบจะเปิดหน้าต่างสรุปผลรางวัลอัตโนมัติ (ใส่ 0 หากไม่จำกัดข้อ)</span>
+          </div>
+
+          <div class="form-field">
+            <label for="settingPoints">
+              <span>คะแนนต่อข้อ (เมื่อตอบถูก):</span>
+            </label>
+            <input type="number" id="settingPoints" class="input-text" min="1" max="50" value="1">
+          </div>
+
+          <div class="form-field">
+            <label for="settingBonus">
+              <span>คะแนนโบนัสเพิ่มเติม (เมื่อตอบถูกยอดเยี่ยม):</span>
+            </label>
+            <input type="number" id="settingBonus" class="input-text" min="1" max="50" value="2">
+          </div>
+
+          <div class="form-field">
+            <label for="settingThemeColor">
+              <span>ชุดสีสันของวงล้อ:</span>
+            </label>
+            <select id="settingThemeColor">
+              <option value="vibrant">🌈 สดใส คมชัด (Vibrant)</option>
+              <option value="pastel">🌸 หวานละมุน (Pastel)</option>
+              <option value="candy">🍬 ลูกกวาดน่ารัก (Candy)</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label class="switch-label">
+              <span>🔊 เปิดเสียงเอฟเฟกต์ (Sound Effects):</span>
+              <div class="switch">
+                <input type="checkbox" id="settingSound" checked>
+                <span class="slider"></span>
+              </div>
+            </label>
+          </div>
+
+          <div class="form-field">
+            <label class="switch-label">
+              <span>🚫 นำชื่อออกจากวงล้อหลังตอบแล้ว:</span>
+              <div class="switch">
+                <input type="checkbox" id="settingRemoveOnPick">
+                <span class="slider"></span>
+              </div>
+            </label>
+            <span class="help-text">ปิดสวิตช์นี้ไว้หากต้องการให้สุ่มซ้ำเพื่อสะสมคะแนนได้หลายรอบ</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="saveSettingsBtn" class="btn btn-primary" style="width: 100%;">
+          💾 บันทึกการตั้งค่า
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 4: CLASS MANAGEMENT (จัดการห้องเรียน)
+       ========================================================================== -->
+  <div id="classModal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">🏫 จัดการห้องเรียน</div>
+        <button id="closeClassModalBtn" class="btn btn-outline btn-sm">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="margin-bottom: 1.25rem;">
+          <label style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.4rem;">
+            ➕ สร้างห้องเรียนใหม่:
+          </label>
+          <div class="input-group">
+            <input type="text" id="newClassNameInput" class="input-text" placeholder="เช่น ม.2/1, กลุ่มวิชาคณิตศาสตร์...">
+            <button id="createClassBtn" class="btn btn-primary btn-sm">สร้างห้อง</button>
+          </div>
+        </div>
+
+        <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem;">
+          ห้องเรียนทั้งหมดในระบบ:
+        </h4>
+        <div id="classListGroup">
+          <!-- Dynamically rendered -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <span>🎡 Classroom Lucky Wheel & Score Collector • ใช้งานได้ฟรี ออฟไลน์ 100% ปลอดภัย ไม่เก็บข้อมูลขึ้นเซิร์ฟเวอร์</span>
+  </footer>
+
+  <!-- Scripts -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

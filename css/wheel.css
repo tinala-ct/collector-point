@@ -1,0 +1,204 @@
+/* ==========================================================================
+   CLASSROOM LUCKY WHEEL & SCORE COLLECTOR - WHEEL STYLES
+   ========================================================================== */
+
+.wheel-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  min-height: 520px;
+  overflow: hidden;
+}
+
+.wheel-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Canvas Element */
+#wheelCanvas {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  box-shadow: var(--shadow-wheel);
+  transition: transform 0.05s ease-out;
+  cursor: pointer;
+  touch-action: none;
+}
+
+/* Wheel Pointer / Ticker Arrow */
+.wheel-pointer-container {
+  position: absolute;
+  top: 50%;
+  right: -12px;
+  transform: translateY(-50%);
+  z-index: 10;
+  pointer-events: none;
+  filter: drop-shadow(-3px 2px 4px rgba(0,0,0,0.25));
+}
+
+.wheel-pointer {
+  width: 0;
+  height: 0;
+  border-top: 18px solid transparent;
+  border-bottom: 18px solid transparent;
+  border-right: 38px solid #f43f5e;
+  position: relative;
+  transform-origin: right center;
+  transition: transform 0.08s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.wheel-pointer::after {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: -36px;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 3px rgba(0,0,0,0.3);
+}
+
+.wheel-pointer.ticking {
+  transform: rotate(-16deg);
+}
+
+/* Center Spin Button */
+.wheel-center-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffffff, #f1f5f9);
+  border: 5px solid var(--primary);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2), inset 0 2px 4px rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Fredoka', 'Prompt', sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--primary);
+  cursor: pointer;
+  z-index: 20;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  user-select: none;
+}
+
+.wheel-center-btn span {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: -2px;
+}
+
+.wheel-center-btn:hover {
+  transform: translate(-50%, -50%) scale(1.08);
+  border-color: var(--secondary);
+  color: var(--secondary);
+  box-shadow: 0 6px 20px rgba(236, 72, 153, 0.35);
+}
+
+.wheel-center-btn:active {
+  transform: translate(-50%, -50%) scale(0.95);
+}
+
+.wheel-center-btn.spinning {
+  pointer-events: none;
+  opacity: 0.85;
+  border-color: var(--text-light);
+  color: var(--text-muted);
+}
+
+/* Controls Bar Under Wheel */
+.wheel-controls {
+  margin-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.shortcut-tip {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+kbd {
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  font-weight: 600;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.1);
+}
+
+/* Empty State / No Students in Wheel */
+.wheel-empty-msg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(4px);
+  padding: 1.5rem 2rem;
+  border-radius: var(--radius-lg);
+  border: 2px dashed var(--border-color);
+  z-index: 25;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 320px;
+}
+
+[data-theme="dark"] .wheel-empty-msg {
+  background: rgba(30, 41, 59, 0.92);
+}
+
+.wheel-empty-msg.active {
+  display: flex;
+}
+
+/* Fullscreen Mode Styling */
+:fullscreen .app-container {
+  max-width: 100vw;
+  height: 100vh;
+  padding: 1.5rem;
+}
+
+:fullscreen .wheel-card {
+  height: 100%;
+  border: none;
+  box-shadow: none;
+}
+
+:fullscreen .wheel-wrapper {
+  max-width: min(70vh, 650px);
+}
