@@ -7,9 +7,10 @@
   <meta name="description" content="เครื่องมือสุ่มชื่อนักเรียนด้วยวงล้อหมุน พร้อมระบบเก็บคะแนนตอบถูก-ตอบผิด สรุปสถิติ Max/Min/Avg มอบรางวัล และ Export ผลคะแนน">
   
   <!-- CSS Stylesheets -->
-  <link rel="stylesheet" href="css/main.css?v=1.1">
-  <link rel="stylesheet" href="css/wheel.css?v=1.1">
-  <link rel="stylesheet" href="css/scoreboard.css?v=1.1">
+  <link rel="stylesheet" href="css/main.css?v=1.2">
+  <link rel="stylesheet" href="css/wheel.css?v=1.2">
+  <link rel="stylesheet" href="css/queue.css?v=1.2">
+  <link rel="stylesheet" href="css/scoreboard.css?v=1.2">
 </head>
 <body>
 
@@ -24,6 +25,12 @@
     </div>
 
     <div class="header-actions">
+      <!-- Game Mode Quick Switcher -->
+      <div class="mode-toggle-group" title="เลือกรูปแบบกิจกรรม">
+        <button id="modeWheelBtn" class="mode-toggle-btn active" data-mode="wheel">🎡 สุ่มวงล้อ</button>
+        <button id="modeQueueBtn" class="mode-toggle-btn" data-mode="queue">🚶 เข้าแถวตอบ</button>
+      </div>
+
       <!-- Class Selector -->
       <div class="class-picker" title="เลือกห้องเรียน">
         <span>🏫</span>
@@ -77,7 +84,7 @@
       </div>
 
       <!-- Interactive Canvas Wheel Card -->
-      <div class="wheel-card">
+      <div id="wheelCard" class="wheel-card">
         <div class="wheel-wrapper">
           <canvas id="wheelCanvas"></canvas>
           
@@ -106,6 +113,11 @@
             🎡 หมุนวงล้อสุ่มชื่อ (Space)
           </button>
         </div>
+      </div>
+
+      <!-- Sequential Clay Figurine Queue Card -->
+      <div id="queueCard" class="queue-card" style="display: none;">
+        <!-- Dynamically rendered by QueueManager in js/queue.js -->
       </div>
     </section>
 
@@ -354,6 +366,16 @@
       <div class="modal-body">
         <div class="settings-grid">
           <div class="form-field">
+            <label for="settingGameMode">
+              <span>รูปแบบกิจกรรม (Game Mode):</span>
+            </label>
+            <select id="settingGameMode">
+              <option value="wheel">🎡 สุ่มรายชื่อด้วยวงล้อ (Random Wheel)</option>
+              <option value="queue">🚶 เข้าแถวเรียงตอบตามลำดับ (Sequential Queue)</option>
+            </select>
+          </div>
+
+          <div class="form-field">
             <label for="settingQuestions">
               <span>จำนวนข้อทั้งหมดในคาบ:</span>
             </label>
@@ -454,6 +476,6 @@
   </footer>
 
   <!-- Scripts -->
-  <script type="module" src="js/app.js?v=1.1"></script>
+  <script type="module" src="js/app.js?v=1.2"></script>
 </body>
 </html>

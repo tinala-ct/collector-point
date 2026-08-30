@@ -1,0 +1,375 @@
+/* ==========================================================================
+   CLASSROOM LUCKY WHEEL - SEQUENTIAL QUEUE & CLAY FIGURINE STYLES
+   ========================================================================== */
+
+/* Queue Stage Container */
+.queue-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  min-height: 520px;
+  overflow: hidden;
+  gap: 1.5rem;
+}
+
+/* Mode Switcher in Header */
+.mode-toggle-group {
+  display: flex;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 0.25rem;
+  gap: 0.25rem;
+}
+
+.mode-toggle-btn {
+  border: none;
+  background: transparent;
+  padding: 0.35rem 0.85rem;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all var(--transition-fast);
+}
+
+.mode-toggle-btn.active {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.35);
+}
+
+/* Spotlight Stage (Front of Line / Current Answerer) */
+.spotlight-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  margin-top: 0.5rem;
+}
+
+.spotlight-podium {
+  position: relative;
+  width: 220px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.podium-base {
+  position: absolute;
+  bottom: 0;
+  width: 190px;
+  height: 42px;
+  background: linear-gradient(180deg, #e2e8f0, #cbd5e1);
+  border-radius: 50%;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), inset 0 2px 4px rgba(255, 255, 255, 0.8);
+  border: 2px solid #ffffff;
+  z-index: 1;
+}
+
+[data-theme="dark"] .podium-base {
+  background: linear-gradient(180deg, #334155, #1e293b);
+  border-color: #475569;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+/* Active Spotlight Character Figurine */
+.spotlight-character {
+  position: relative;
+  z-index: 2;
+  width: 150px;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  filter: drop-shadow(0 12px 14px rgba(0, 0, 0, 0.18));
+}
+
+.spotlight-character.jump {
+  animation: characterJump 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.spotlight-character.shake {
+  animation: characterShake 0.5s ease-in-out;
+}
+
+.spotlight-character.walk-out {
+  animation: characterWalkOut 0.5s forwards ease-in;
+}
+
+.spotlight-character.walk-in {
+  animation: characterWalkIn 0.5s forwards cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes characterJump {
+  0%, 100% { transform: translateY(0) scale(1); }
+  40% { transform: translateY(-28px) scale(1.08, 0.95); }
+  60% { transform: translateY(-32px) scale(0.98, 1.05); }
+}
+
+@keyframes characterShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-10px) rotate(-6deg); }
+  40% { transform: translateX(10px) rotate(6deg); }
+  60% { transform: translateX(-6px) rotate(-3deg); }
+  80% { transform: translateX(6px) rotate(3deg); }
+}
+
+@keyframes characterWalkOut {
+  0% { transform: translateX(0) scale(1); opacity: 1; }
+  100% { transform: translateX(120px) scale(0.7); opacity: 0; }
+}
+
+@keyframes characterWalkIn {
+  0% { transform: translateX(-120px) scale(0.7); opacity: 0; }
+  100% { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+/* Spotlight Student Info Card */
+.spotlight-info {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+}
+
+.spotlight-order-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-light);
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.spotlight-name {
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.spotlight-score-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--secondary);
+  background: #fdf2f8;
+  padding: 0.3rem 0.9rem;
+  border-radius: var(--radius-full);
+  border: 1px solid #fbcfe8;
+}
+
+[data-theme="dark"] .spotlight-score-pill {
+  background: rgba(236, 72, 153, 0.15);
+  border-color: rgba(236, 72, 153, 0.3);
+}
+
+/* Quick Answer Scoring Buttons for Queue Mode */
+.queue-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 540px;
+}
+
+.queue-btn {
+  flex: 1;
+  min-width: 130px;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all var(--transition-fast);
+}
+
+.queue-btn:active {
+  transform: scale(0.96);
+}
+
+.queue-btn-correct {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #065f46;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.15);
+}
+.queue-btn-correct:hover {
+  background: #d1fae5;
+  border-color: #34d399;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(16, 185, 129, 0.25);
+}
+
+.queue-btn-wrong {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #991b1b;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.15);
+}
+.queue-btn-wrong:hover {
+  background: #fee2e2;
+  border-color: #f87171;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(239, 68, 68, 0.25);
+}
+
+.queue-btn-bonus {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+.queue-btn-bonus:hover {
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+
+.queue-btn-skip {
+  background: var(--bg-sidebar);
+  border-color: var(--border-color);
+  color: var(--text-muted);
+}
+.queue-btn-skip:hover {
+  background: var(--border-color);
+  color: var(--text-main);
+}
+
+/* Waiting Queue Line Track */
+.queue-track-section {
+  width: 100%;
+  border-top: 1px solid var(--border-color);
+  padding-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.queue-track-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 0 0.25rem;
+}
+
+.queue-line-wrapper {
+  overflow-x: auto;
+  padding: 0.5rem 0.25rem 1rem 0.25rem;
+  scroll-behavior: smooth;
+}
+
+.queue-line {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.25rem;
+  min-width: max-content;
+  padding: 0 0.5rem;
+}
+
+/* Individual Queue Figurine Item */
+.queue-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 85px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  padding: 0.5rem 0.25rem;
+  border-radius: var(--radius-md);
+}
+
+.queue-item:hover {
+  transform: translateY(-6px);
+  background: var(--bg-sidebar);
+}
+
+.queue-item-order {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-light);
+  margin-bottom: 0.25rem;
+}
+
+.queue-item-fig {
+  width: 55px;
+  height: 75px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.12));
+  transition: transform 0.2s ease;
+}
+
+.queue-item:hover .queue-item-fig {
+  transform: scale(1.1);
+}
+
+.queue-item-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-main);
+  text-align: center;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 0.35rem;
+}
+
+.queue-item-score {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--secondary);
+  background: var(--bg-sidebar);
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-full);
+  margin-top: 0.15rem;
+}
+
+/* Empty Queue Alert */
+.queue-empty-msg {
+  text-align: center;
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-muted);
+}

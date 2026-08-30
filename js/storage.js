@@ -43,6 +43,7 @@ const DEFAULT_SAMPLE_CLASSES = [
 ];
 
 const DEFAULT_SETTINGS = {
+  gameMode: 'wheel', // 'wheel' or 'queue'
   totalQuestions: 10,
   pointsPerQuestion: 1,
   bonusPoints: 2,

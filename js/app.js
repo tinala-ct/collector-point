@@ -3,6 +3,7 @@
  */
 
 import { WheelEngine, COLOR_PALETTES } from './wheel.js';
+import { QueueManager } from './queue.js';
 import { sounds } from './audio.js';
 import { confetti } from './confetti.js';
 import { StorageManager } from './storage.js';
@@ -17,6 +18,7 @@ class ClassroomApp {
     this.history = [];
     this.currentPickedStudent = null;
     this.wheel = null;
+    this.queueManager = null;
 
     this.init();
   }
@@ -41,13 +43,24 @@ class ClassroomApp {
       onWinnerSelected: (winner, index) => this.handleWinnerSelected(winner, index)
     });
 
+    // Initialize Sequential Queue Manager
+    this.queueManager = new QueueManager('queueCard', {
+      onAnswerSubmit: (student, outcome) => this.handleQueueAnswer(student, outcome)
+    });
+
     this.bindDOM();
     this.bindEvents();
+    this.setGameMode(this.settings.gameMode || 'wheel', false);
     this.syncUI();
   }
 
   bindDOM() {
-    // Header & Controls
+    // Header & Mode Controls
+    this.modeWheelBtn = document.getElementById('modeWheelBtn');
+    this.modeQueueBtn = document.getElementById('modeQueueBtn');
+    this.wheelCard = document.getElementById('wheelCard');
+    this.queueCard = document.getElementById('queueCard');
+
     this.classSelect = document.getElementById('classSelect');
     this.themeToggleBtn = document.getElementById('themeToggleBtn');
     this.fullscreenBtn = document.getElementById('fullscreenBtn');
@@ -83,7 +96,7 @@ class ClassroomApp {
     this.scoreboardBody = document.getElementById('scoreboardBody');
     this.historyList = document.getElementById('historyList');
 
-    // Answer / Scoring Modal
+    // Answer / Scoring Modal (for Wheel mode)
     this.answerModal = document.getElementById('answerModal');
     this.winnerNameDisplay = document.getElementById('winnerNameDisplay');
     this.winnerCurrentScore = document.getElementById('winnerCurrentScore');
@@ -95,6 +108,7 @@ class ClassroomApp {
 
     // Settings Modal
     this.settingsModal = document.getElementById('settingsModal');
+    this.settingGameMode = document.getElementById('settingGameMode');
     this.settingQuestions = document.getElementById('settingQuestions');
     this.settingPoints = document.getElementById('settingPoints');
     this.settingBonus = document.getElementById('settingBonus');
@@ -120,41 +134,69 @@ class ClassroomApp {
   }
 
   bindEvents() {
+    // Mode Switcher Buttons
+    if (this.modeWheelBtn) {
+      this.modeWheelBtn.addEventListener('click', () => this.setGameMode('wheel'));
+    }
+    if (this.modeQueueBtn) {
+      this.modeQueueBtn.addEventListener('click', () => this.setGameMode('queue'));
+    }
+
     // Wheel Spin Actions
     const triggerSpin = () => {
-      if (this.wheel.spin()) {
-        this.centerSpinBtn.classList.add('spinning');
-        this.spinBtn.disabled = true;
+      if (this.settings.gameMode === 'wheel') {
+        if (this.wheel.spin()) {
+          this.centerSpinBtn.classList.add('spinning');
+          this.spinBtn.disabled = true;
+        }
       }
     };
 
     this.spinBtn.addEventListener('click', triggerSpin);
     this.centerSpinBtn.addEventListener('click', triggerSpin);
     document.getElementById('wheelCanvas').addEventListener('click', () => {
-      if (!this.wheel.isSpinning) triggerSpin();
+      if (!this.wheel.isSpinning && this.settings.gameMode === 'wheel') triggerSpin();
     });
 
-    // Keyboard shortcut (Space to spin, 1/2 in modal)
+    // Keyboard shortcut
     window.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-      if (e.code === 'Space') {
-        e.preventDefault();
-        if (!this.isAnyModalOpen() && !this.wheel.isSpinning) {
-          triggerSpin();
+      if (this.settings.gameMode === 'wheel') {
+        if (e.code === 'Space') {
+          e.preventDefault();
+          if (!this.isAnyModalOpen() && !this.wheel.isSpinning) {
+            triggerSpin();
+          }
+        } else if (this.answerModal.classList.contains('show')) {
+          if (e.key === '1' || e.key === 'Enter') {
+            e.preventDefault();
+            this.recordAnswer('correct');
+          } else if (e.key === '2' || e.key === 'Escape') {
+            e.preventDefault();
+            this.recordAnswer('wrong');
+          }
         }
-      } else if (this.answerModal.classList.contains('show')) {
-        if (e.key === '1' || e.key === 'Enter') {
-          e.preventDefault();
-          this.recordAnswer('correct');
-        } else if (e.key === '2' || e.key === 'Escape') {
-          e.preventDefault();
-          this.recordAnswer('wrong');
+      } else if (this.settings.gameMode === 'queue') {
+        if (!this.isAnyModalOpen()) {
+          if (e.key === '1' || e.code === 'Space') {
+            e.preventDefault();
+            const btn = document.getElementById('qCorrectBtn');
+            if (btn) btn.click();
+          } else if (e.key === '2') {
+            e.preventDefault();
+            const btn = document.getElementById('qWrongBtn');
+            if (btn) btn.click();
+          } else if (e.key === '3') {
+            e.preventDefault();
+            const btn = document.getElementById('qBonusBtn');
+            if (btn) btn.click();
+          }
         }
       }
     });
 
-    // Scoring Actions
+    // Scoring Actions for Wheel Modal
     this.correctBtn.addEventListener('click', () => this.recordAnswer('correct'));
     this.wrongBtn.addEventListener('click', () => this.recordAnswer('wrong'));
     this.bonusBtn.addEventListener('click', () => this.recordAnswer('bonus'));
@@ -238,13 +280,40 @@ class ClassroomApp {
     });
   }
 
+  setGameMode(mode, save = true) {
+    this.settings.gameMode = mode;
+    if (save) StorageManager.saveSettings(this.settings);
+
+    if (this.modeWheelBtn && this.modeQueueBtn) {
+      this.modeWheelBtn.classList.toggle('active', mode === 'wheel');
+      this.modeQueueBtn.classList.toggle('active', mode === 'queue');
+    }
+
+    if (this.wheelCard && this.queueCard) {
+      if (mode === 'wheel') {
+        this.wheelCard.style.display = 'flex';
+        this.queueCard.style.display = 'none';
+        this.updateWheelItems();
+      } else {
+        this.wheelCard.style.display = 'none';
+        this.queueCard.style.display = 'flex';
+        this.queueManager.setStudents(this.currentClass.students || []);
+      }
+    }
+  }
+
   syncUI() {
     this.renderClassSelect();
     this.renderStatusBar();
     this.renderStudentsList();
     this.renderScoreboard();
     this.renderHistory();
-    this.updateWheelItems();
+
+    if (this.settings.gameMode === 'wheel') {
+      this.updateWheelItems();
+    } else {
+      this.queueManager.setStudents(this.currentClass.students || []);
+    }
   }
 
   renderClassSelect() {
@@ -287,7 +356,7 @@ class ClassroomApp {
           <span class="student-name-text">${this.escapeHTML(student.name)}</span>
         </div>
         <div class="student-actions">
-          <button class="btn btn-outline btn-sm toggle-btn" title="${student.enabled === false ? 'นำกลับเข้าวงล้อ' : 'ซ่อนจากวงล้อชั่วคราว'}">
+          <button class="btn btn-outline btn-sm toggle-btn" title="${student.enabled === false ? 'นำกลับเข้าแถว' : 'ซ่อนชั่วคราว'}">
             ${student.enabled === false ? '👁️‍🗨️ ซ่อนอยู่' : '✅ ใช้งาน'}
           </button>
           <button class="btn btn-outline btn-sm delete-btn" title="ลบรายชื่อ" style="color:var(--danger);">
@@ -300,7 +369,7 @@ class ClassroomApp {
         student.enabled = student.enabled === false ? true : false;
         this.saveCurrentClass();
         this.renderStudentsList();
-        this.updateWheelItems();
+        this.syncUI();
       });
 
       li.querySelector('.delete-btn').addEventListener('click', () => {
@@ -418,6 +487,68 @@ class ClassroomApp {
     this.openAnswerModal();
   }
 
+  // Answer handler for Sequential Queue Mode
+  handleQueueAnswer(student, outcome) {
+    if (!student) return;
+
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    let pointsAwarded = 0;
+
+    if (outcome === 'correct') {
+      pointsAwarded = this.settings.pointsPerQuestion;
+      student.score += pointsAwarded;
+      student.answeredCount = (student.answeredCount || 0) + 1;
+      student.correctCount = (student.correctCount || 0) + 1;
+      student.pickedCount = (student.pickedCount || 0) + 1;
+      sounds.playCorrect();
+      confetti.shoot({ count: 60 });
+    } else if (outcome === 'bonus') {
+      pointsAwarded = this.settings.pointsPerQuestion + this.settings.bonusPoints;
+      student.score += pointsAwarded;
+      student.answeredCount = (student.answeredCount || 0) + 1;
+      student.correctCount = (student.correctCount || 0) + 1;
+      student.pickedCount = (student.pickedCount || 0) + 1;
+      sounds.playCorrect();
+      confetti.shoot({ count: 100 });
+    } else if (outcome === 'wrong') {
+      pointsAwarded = 0;
+      student.answeredCount = (student.answeredCount || 0) + 1;
+      student.wrongCount = (student.wrongCount || 0) + 1;
+      student.pickedCount = (student.pickedCount || 0) + 1;
+      sounds.playWrong();
+    } else if (outcome === 'skip') {
+      pointsAwarded = 0;
+    }
+
+    // Log history
+    this.history.push({
+      round: this.currentRound,
+      studentName: student.name,
+      outcome: outcome === 'bonus' ? 'correct' : outcome,
+      points: pointsAwarded,
+      time: timeStr
+    });
+
+    this.saveCurrentClass();
+
+    // Advance round
+    if (outcome !== 'skip') {
+      if (this.settings.totalQuestions > 0 && this.currentRound >= this.settings.totalQuestions) {
+        this.renderStatusBar();
+        this.renderScoreboard();
+        this.renderHistory();
+        setTimeout(() => this.showGameSummary(), 700);
+        return;
+      }
+      this.currentRound++;
+    }
+
+    this.renderStatusBar();
+    this.renderScoreboard();
+    this.renderHistory();
+  }
+
   recordAnswer(outcome) {
     if (!this.currentPickedStudent) return;
 
@@ -447,7 +578,6 @@ class ClassroomApp {
       sounds.playWrong();
     } else if (outcome === 'skip') {
       pointsAwarded = 0;
-      // Skip does not count toward answered questions
     }
 
     // Log history
@@ -568,13 +698,13 @@ class ClassroomApp {
     const perfectStudents = students.filter(s => s.answeredCount > 0 && s.correctCount === s.answeredCount);
     if (perfectStudents.length > 0) {
       const bestPerfect = perfectStudents.sort((a, b) => b.correctCount - a.correctCount)[0];
-      awardsContainer.appendChild(this.createBadgeCard('⚡', 'สายฟ้าแลบตอบแม่น (100% Accuracy)', `ตอบถูกทุกข้อที่ได้รับสุ่ม`, bestPerfect.name, `ตอบถูก ${bestPerfect.correctCount} ข้อรวด`));
+      awardsContainer.appendChild(this.createBadgeCard('⚡', 'สายฟ้าแลบตอบแม่น (100% Accuracy)', `ตอบถูกทุกข้อที่ได้รับเลือก`, bestPerfect.name, `ตอบถูก ${bestPerfect.correctCount} ข้อรวด`));
     }
 
     // 3. Most Picked
     const mostPicked = [...students].sort((a, b) => (b.pickedCount || 0) - (a.pickedCount || 0))[0];
     if (mostPicked && mostPicked.pickedCount > 1) {
-      awardsContainer.appendChild(this.createBadgeCard('💖', 'ขวัญใจวงล้อ (Wheel Favorite)', `วงล้อหมุนมาเจอมากที่สุด`, mostPicked.name, `ได้รับเลือก ${mostPicked.pickedCount} ครั้ง`));
+      awardsContainer.appendChild(this.createBadgeCard('💖', 'ขวัญใจกิจกรรม (Favorite Student)', `มีส่วนร่วมตอบคำถามบ่อยที่สุด`, mostPicked.name, `ได้รับเลือก ${mostPicked.pickedCount} ครั้ง`));
     }
 
     // 4. Great Participation / Persistence
@@ -607,6 +737,7 @@ class ClassroomApp {
   closeAnswerModal() { this.answerModal.classList.remove('show'); }
 
   openSettingsModal() {
+    if (this.settingGameMode) this.settingGameMode.value = this.settings.gameMode || 'wheel';
     this.settingQuestions.value = this.settings.totalQuestions;
     this.settingPoints.value = this.settings.pointsPerQuestion;
     this.settingBonus.value = this.settings.bonusPoints;
@@ -619,6 +750,10 @@ class ClassroomApp {
   closeSettingsModal() { this.settingsModal.classList.remove('show'); }
 
   handleSaveSettings() {
+    if (this.settingGameMode) {
+      const mode = this.settingGameMode.value;
+      this.setGameMode(mode, false);
+    }
     this.settings.totalQuestions = parseInt(this.settingQuestions.value, 10) || 10;
     this.settings.pointsPerQuestion = parseInt(this.settingPoints.value, 10) || 1;
     this.settings.bonusPoints = parseInt(this.settingBonus.value, 10) || 2;
