@@ -7,10 +7,10 @@
   <meta name="description" content="เครื่องมือสุ่มชื่อนักเรียนด้วยวงล้อหมุน พร้อมระบบเก็บคะแนนตอบถูก-ตอบผิด สรุปสถิติ Max/Min/Avg มอบรางวัล และ Export ผลคะแนน">
   
   <!-- CSS Stylesheets -->
-  <link rel="stylesheet" href="css/main.css?v=1.2">
-  <link rel="stylesheet" href="css/wheel.css?v=1.2">
-  <link rel="stylesheet" href="css/queue.css?v=1.2">
-  <link rel="stylesheet" href="css/scoreboard.css?v=1.2">
+  <link rel="stylesheet" href="css/main.css?v=1.3">
+  <link rel="stylesheet" href="css/wheel.css?v=1.3">
+  <link rel="stylesheet" href="css/queue.css?v=1.3">
+  <link rel="stylesheet" href="css/scoreboard.css?v=1.3">
 </head>
 <body>
 
@@ -376,6 +376,18 @@
           </div>
 
           <div class="form-field">
+            <label for="settingRandomAlgorithm">
+              <span>การกระจายตัวในการสุ่ม (Random Distribution):</span>
+            </label>
+            <select id="settingRandomAlgorithm">
+              <option value="smart_balanced">🌟 กระจายตัวสมดุล (Smart Balanced - แนะนำ)</option>
+              <option value="shuffle_bag">🎴 หมุนเวียนครบทุกคน (Shuffle Bag)</option>
+              <option value="pure_random">🎲 สุ่มอิสระทั่วไป (Pure Random)</option>
+            </select>
+            <span class="help-text"><strong>กระจายตัวสมดุล:</strong> ช่วยให้นักเรียนทุกคนมีโอกาสได้ตอบทั่วถึง ไม่ซ้ำคนเดิมติดๆ กัน</span>
+          </div>
+
+          <div class="form-field">
             <label for="settingQuestions">
               <span>จำนวนข้อทั้งหมดในคาบ:</span>
             </label>
@@ -476,6 +488,6 @@
   </footer>
 
   <!-- Scripts -->
-  <script type="module" src="js/app.js?v=1.2"></script>
+  <script type="module" src="js/app.js?v=1.3"></script>
 </body>
 </html>

@@ -19,6 +19,8 @@ class ClassroomApp {
     this.currentPickedStudent = null;
     this.wheel = null;
     this.queueManager = null;
+    this.shuffleBag = [];
+    this.lastPickedStudentId = null;
 
     this.init();
   }
@@ -109,6 +111,7 @@ class ClassroomApp {
     // Settings Modal
     this.settingsModal = document.getElementById('settingsModal');
     this.settingGameMode = document.getElementById('settingGameMode');
+    this.settingRandomAlgorithm = document.getElementById('settingRandomAlgorithm');
     this.settingQuestions = document.getElementById('settingQuestions');
     this.settingPoints = document.getElementById('settingPoints');
     this.settingBonus = document.getElementById('settingBonus');
@@ -145,7 +148,8 @@ class ClassroomApp {
     // Wheel Spin Actions
     const triggerSpin = () => {
       if (this.settings.gameMode === 'wheel') {
-        if (this.wheel.spin()) {
+        const nextWinnerIndex = this.pickNextWinnerIndex();
+        if (this.wheel.spin(nextWinnerIndex)) {
           this.centerSpinBtn.classList.add('spinning');
           this.spinBtn.disabled = true;
         }
@@ -456,6 +460,77 @@ class ClassroomApp {
     });
   }
 
+  getSecureRandom() {
+    if (window.crypto && window.crypto.getRandomValues) {
+      const arr = new Uint32Array(1);
+      window.crypto.getRandomValues(arr);
+      return arr[0] / (0xFFFFFFFF + 1);
+    }
+    return Math.random();
+  }
+
+  /**
+   * Smart Random Winner Selection Algorithm
+   * Supports:
+   * 1. 'smart_balanced' (Default): Fair weighted distribution with deficit boost and anti-repeat cooldown
+   * 2. 'shuffle_bag': Deck shuffle cycle ensuring 100% participation of all students per round
+   * 3. 'pure_random': Uniform random selection
+   */
+  pickNextWinnerIndex() {
+    const activeStudents = (this.currentClass.students || []).filter(s => s.enabled !== false);
+    if (activeStudents.length === 0) return -1;
+    if (activeStudents.length === 1) return 0;
+
+    const algo = this.settings.randomAlgorithm || 'smart_balanced';
+
+    // Algorithm 1: Shuffle Bag (Deck Cycle)
+    if (algo === 'shuffle_bag') {
+      if (!this.shuffleBag || this.shuffleBag.length === 0) {
+        this.shuffleBag = activeStudents.map((_, idx) => idx);
+        // Fisher-Yates Shuffle with secure random
+        for (let i = this.shuffleBag.length - 1; i > 0; i--) {
+          const j = Math.floor(this.getSecureRandom() * (i + 1));
+          [this.shuffleBag[i], this.shuffleBag[j]] = [this.shuffleBag[j], this.shuffleBag[i]];
+        }
+      }
+      return this.shuffleBag.pop();
+    }
+
+    // Algorithm 2: Pure Random (Uniform)
+    if (algo === 'pure_random') {
+      return Math.floor(this.getSecureRandom() * activeStudents.length);
+    }
+
+    // Algorithm 3: Smart Balanced (Weighted Distribution with Anti-Repeat Cooldown)
+    const pickCounts = activeStudents.map(s => s.pickedCount || 0);
+    const minPicked = Math.min(...pickCounts);
+    const maxPicked = Math.max(...pickCounts);
+
+    const weights = activeStudents.map((s) => {
+      // Exponential deficit boost: Students with fewer turns get substantially higher weight
+      let w = Math.pow(3, maxPicked - (s.pickedCount || 0));
+
+      // Anti-Repeat Cooldown: If this student was picked in the immediately preceding round, heavily reduce weight
+      if (this.lastPickedStudentId && s.id === this.lastPickedStudentId && activeStudents.length > 1) {
+        w *= 0.05;
+      }
+      return Math.max(w, 0.01);
+    });
+
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+    const randomVal = this.getSecureRandom() * totalWeight;
+    let runningSum = 0;
+
+    for (let i = 0; i < weights.length; i++) {
+      runningSum += weights[i];
+      if (randomVal <= runningSum) {
+        return i;
+      }
+    }
+
+    return weights.length - 1;
+  }
+
   updateWheelItems() {
     const activeStudents = (this.currentClass.students || []).filter(s => s.enabled !== false);
     this.wheel.setItems(activeStudents);
@@ -473,6 +548,7 @@ class ClassroomApp {
     this.centerSpinBtn.classList.remove('spinning');
     this.spinBtn.disabled = false;
     this.currentPickedStudent = winner;
+    this.lastPickedStudentId = winner ? winner.id : null;
 
     // Increment picked count
     winner.pickedCount = (winner.pickedCount || 0) + 1;
@@ -738,6 +814,7 @@ class ClassroomApp {
 
   openSettingsModal() {
     if (this.settingGameMode) this.settingGameMode.value = this.settings.gameMode || 'wheel';
+    if (this.settingRandomAlgorithm) this.settingRandomAlgorithm.value = this.settings.randomAlgorithm || 'smart_balanced';
     this.settingQuestions.value = this.settings.totalQuestions;
     this.settingPoints.value = this.settings.pointsPerQuestion;
     this.settingBonus.value = this.settings.bonusPoints;
@@ -753,6 +830,10 @@ class ClassroomApp {
     if (this.settingGameMode) {
       const mode = this.settingGameMode.value;
       this.setGameMode(mode, false);
+    }
+    if (this.settingRandomAlgorithm) {
+      this.settings.randomAlgorithm = this.settingRandomAlgorithm.value;
+      this.shuffleBag = []; // Reset shuffle bag when algorithm changes
     }
     this.settings.totalQuestions = parseInt(this.settingQuestions.value, 10) || 10;
     this.settings.pointsPerQuestion = parseInt(this.settingPoints.value, 10) || 1;
@@ -850,6 +931,8 @@ class ClassroomApp {
       StorageManager.setCurrentClassId(target.id);
       this.currentRound = 1;
       this.history = [];
+      this.shuffleBag = [];
+      this.lastPickedStudentId = null;
       this.syncUI();
     }
   }
@@ -929,6 +1012,8 @@ class ClassroomApp {
     });
     this.currentRound = 1;
     this.history = [];
+    this.shuffleBag = [];
+    this.lastPickedStudentId = null;
     this.saveCurrentClass();
     this.syncUI();
   }

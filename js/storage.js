@@ -44,6 +44,7 @@ const DEFAULT_SAMPLE_CLASSES = [
 
 const DEFAULT_SETTINGS = {
   gameMode: 'wheel', // 'wheel' or 'queue'
+  randomAlgorithm: 'smart_balanced', // 'smart_balanced' | 'shuffle_bag' | 'pure_random'
   totalQuestions: 10,
   pointsPerQuestion: 1,
   bonusPoints: 2,

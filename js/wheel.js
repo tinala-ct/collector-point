@@ -179,7 +179,7 @@ export class WheelEngine {
     this.ctx.restore();
   }
 
-  spin() {
+  spin(forcedWinnerIndex = null) {
     if (this.isSpinning || this.items.length === 0) return false;
 
     this.isSpinning = true;
@@ -188,8 +188,11 @@ export class WheelEngine {
     const normalize = (a) => ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     const sliceAngle = (Math.PI * 2) / this.items.length;
 
-    // 1. Pick a random target winner index
-    const targetWinnerIndex = Math.floor(Math.random() * this.items.length);
+    // 1. Determine target winner index (pre-calculated or random fallback)
+    let targetWinnerIndex = forcedWinnerIndex;
+    if (targetWinnerIndex === null || targetWinnerIndex === undefined || targetWinnerIndex < 0 || targetWinnerIndex >= this.items.length) {
+      targetWinnerIndex = Math.floor(Math.random() * this.items.length);
+    }
 
     // 2. Calculate target local angle inside that winning slice (with safe middle jitter)
     const randomOffsetInSlice = (Math.random() - 0.5) * (sliceAngle * 0.6);
