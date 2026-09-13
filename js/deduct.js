@@ -16,21 +16,22 @@ export class DeductManager {
     this.searchTerm = '';
     this.onDeduct = options.onDeduct || null;
     this.onResetAll = options.onResetAll || null;
+    this.hasBoundGlobalEvents = false;
   }
 
   setStudents(students, initialScore = 100, deductStep = 5) {
-    this.initialScore = initialScore;
-    this.deductStep = deductStep;
+    this.initialScore = Number(initialScore) || 100;
+    this.deductStep = Number(deductStep) || 5;
     
-    // Ensure every student has behaviorScore initialized
-    this.students = students.map(s => {
-      if (s.behaviorScore === undefined || s.behaviorScore === null) {
+    // Ensure every student has behaviorScore and deductionsCount initialized
+    this.students = students;
+    this.students.forEach(s => {
+      if (s.behaviorScore === undefined || s.behaviorScore === null || isNaN(s.behaviorScore)) {
         s.behaviorScore = this.initialScore;
       }
-      if (s.deductionsCount === undefined || s.deductionsCount === null) {
+      if (s.deductionsCount === undefined || s.deductionsCount === null || isNaN(s.deductionsCount)) {
         s.deductionsCount = 0;
       }
-      return s;
     });
 
     this.render();
@@ -40,14 +41,22 @@ export class DeductManager {
     let list = this.students.filter(s => s.enabled !== false);
 
     if (this.searchTerm) {
-      const term = this.searchTerm.toLowerCase();
+      const term = this.searchTerm.toLowerCase().trim();
       list = list.filter(s => s.name.toLowerCase().includes(term));
     }
 
     if (this.sortBy === 'score-desc') {
-      list = [...list].sort((a, b) => (b.behaviorScore - a.behaviorScore) || a.name.localeCompare(b.name, 'th'));
+      list = [...list].sort((a, b) => {
+        const aScore = a.behaviorScore !== undefined ? a.behaviorScore : this.initialScore;
+        const bScore = b.behaviorScore !== undefined ? b.behaviorScore : this.initialScore;
+        return (bScore - aScore) || a.name.localeCompare(b.name, 'th');
+      });
     } else if (this.sortBy === 'score-asc') {
-      list = [...list].sort((a, b) => (a.behaviorScore - b.behaviorScore) || a.name.localeCompare(b.name, 'th'));
+      list = [...list].sort((a, b) => {
+        const aScore = a.behaviorScore !== undefined ? a.behaviorScore : this.initialScore;
+        const bScore = b.behaviorScore !== undefined ? b.behaviorScore : this.initialScore;
+        return (aScore - bScore) || a.name.localeCompare(b.name, 'th');
+      });
     }
 
     return list;
@@ -81,10 +90,10 @@ export class DeductManager {
     this.container.innerHTML = `
       <!-- Toolbar -->
       <div class="deduct-toolbar">
-        <div class="deduct-stats-badge">
+        <div class="deduct-stats-badge" id="deductStatsBadge">
           <span>📉 คะแนนเริ่มต้น: <strong>${this.initialScore}</strong> แต้ม</span>
           <span>• ลดทีละ: <strong>-${this.deductStep}</strong> แต้ม</span>
-          <span class="stat-pill">💥 หักรวมทั้งห้อง: ${totalDeductions} ครั้ง (-${totalDeductedPoints} แต้ม)</span>
+          <span class="stat-pill" id="deductTotalPill">💥 หักรวมทั้งห้อง: ${totalDeductions} ครั้ง (-${totalDeductedPoints} แต้ม)</span>
         </div>
 
         <div class="deduct-toolbar-actions">
@@ -120,7 +129,7 @@ export class DeductManager {
           const poseIndex = Math.abs(this.hashCode(student.name)) % CLAY_POSES.length;
 
           return `
-            <div class="deduct-item" id="deductItem_${student.id}">
+            <div class="deduct-item" id="deductItem_${student.id}" data-student-id="${student.id}">
               <!-- Student Info & Clay Avatar -->
               <div class="deduct-student-info">
                 <div class="deduct-avatar-box" title="${this.escapeHTML(student.name)}">
@@ -130,28 +139,28 @@ export class DeductManager {
                 </div>
                 <div class="deduct-name-box">
                   <span class="deduct-name" title="${this.escapeHTML(student.name)}">${this.escapeHTML(student.name)}</span>
-                  <span class="deduct-rank-tag">ลำดับที่ ${idx + 1} • หักไป ${student.deductionsCount || 0} ครั้ง</span>
+                  <span class="deduct-rank-tag" id="deductTag_${student.id}">ลำดับที่ ${idx + 1} • หักไป ${student.deductionsCount || 0} ครั้ง</span>
                 </div>
               </div>
 
               <!-- Animated Progress Bar / Health Bar -->
               <div class="deduct-bar-wrapper">
                 <div class="deduct-bar-labels">
-                  <span class="deduct-score-text" style="color: ${scoreColor};">
+                  <span class="deduct-score-text" id="deductScoreText_${student.id}" style="color: ${scoreColor};">
                     ${score} / ${this.initialScore} แต้ม
                   </span>
-                  <span class="deduct-count-text">
+                  <span class="deduct-count-text" id="deductStatusText_${student.id}">
                     ${score <= 0 ? '💀 หมดพลัง' : score < 50 ? '⚠️ ระวัง' : '🌟 เรียบร้อย'}
                   </span>
                 </div>
                 <div class="deduct-bar-track">
-                  <div class="deduct-bar-fill ${tierClass}" style="width: ${percent}%;"></div>
+                  <div class="deduct-bar-fill ${tierClass}" id="deductBarFill_${student.id}" style="width: ${percent}%;"></div>
                 </div>
               </div>
 
               <!-- Deduct Action Button -->
               <div class="deduct-btn-box">
-                <button class="btn-deduct" data-student-id="${student.id}" ${score <= 0 ? 'disabled' : ''} title="หักคะแนน ${student.name} ${this.deductStep} แต้ม">
+                <button type="button" class="btn-deduct" id="deductBtn_${student.id}" data-student-id="${student.id}" ${score <= 0 ? 'disabled' : ''} title="หักคะแนน ${this.escapeHTML(student.name)} ${this.deductStep} แต้ม">
                   <span>-${this.deductStep} แต้ม</span> 💥
                 </button>
               </div>
@@ -161,73 +170,193 @@ export class DeductManager {
       </div>
     `;
 
-    this.bindEvents();
+    this.bindEventsOnce();
   }
 
-  bindEvents() {
-    // Search input
-    const searchInput = document.getElementById('deductSearchInput');
-    if (searchInput) {
-      searchInput.addEventListener('input', (e) => {
+  bindEventsOnce() {
+    if (this.hasBoundGlobalEvents) return;
+    this.hasBoundGlobalEvents = true;
+
+    // Delegated click listener on the main container
+    this.container.addEventListener('click', (e) => {
+      // 1. Check if deduct button was clicked
+      const deductBtn = e.target.closest('.btn-deduct');
+      if (deductBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const studentId = deductBtn.dataset.studentId;
+        this.handleDeductStudent(studentId, deductBtn);
+        return;
+      }
+
+      // 2. Check if reset all button was clicked
+      const resetBtn = e.target.closest('#deductResetAllBtn');
+      if (resetBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.handleResetAll();
+        return;
+      }
+    });
+
+    // Delegated input listener for search
+    this.container.addEventListener('input', (e) => {
+      if (e.target && e.target.id === 'deductSearchInput') {
         this.searchTerm = e.target.value;
-        this.render();
-      });
-    }
+        this.renderGridOnly();
+      }
+    });
 
-    // Sort select
-    const sortSelect = document.getElementById('deductSortSelect');
-    if (sortSelect) {
-      sortSelect.addEventListener('change', (e) => {
+    // Delegated change listener for sorting
+    this.container.addEventListener('change', (e) => {
+      if (e.target && e.target.id === 'deductSortSelect') {
         this.sortBy = e.target.value;
-        this.render();
-      });
-    }
-
-    // Reset All button
-    const resetBtn = document.getElementById('deductResetAllBtn');
-    if (resetBtn) {
-      resetBtn.addEventListener('click', () => {
-        if (confirm(`ต้องการรีเซ็ตคะแนนความประพฤติของทุกคนกลับเป็น ${this.initialScore} คะแนนเต็มใช่หรือไม่?`)) {
-          this.students.forEach(s => {
-            s.behaviorScore = this.initialScore;
-            s.deductionsCount = 0;
-          });
-          if (this.onResetAll) this.onResetAll();
-          this.render();
-        }
-      });
-    }
-
-    // Deduct buttons
-    const deductBtns = this.container.querySelectorAll('.btn-deduct');
-    deductBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const studentId = btn.dataset.studentId;
-        this.handleDeductStudent(studentId, btn);
-      });
+        this.renderGridOnly();
+      }
     });
   }
 
+  renderGridOnly() {
+    const gridEl = document.getElementById('deductGrid');
+    if (!gridEl) {
+      this.render();
+      return;
+    }
+
+    const displayList = this.getProcessedList();
+    if (displayList.length === 0) {
+      gridEl.innerHTML = `
+        <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">👥</div>
+          <p>ไม่พบรายชื่อนักเรียน</p>
+        </div>
+      `;
+      return;
+    }
+
+    gridEl.innerHTML = displayList.map((student, idx) => {
+      const score = student.behaviorScore !== undefined ? student.behaviorScore : this.initialScore;
+      const percent = Math.max(0, Math.min(100, (score / this.initialScore) * 100));
+      const tierClass = this.getTierClass(score, this.initialScore);
+      const scoreColor = this.getScoreColor(score, this.initialScore);
+      const poseIndex = Math.abs(this.hashCode(student.name)) % CLAY_POSES.length;
+
+      return `
+        <div class="deduct-item" id="deductItem_${student.id}" data-student-id="${student.id}">
+          <div class="deduct-student-info">
+            <div class="deduct-avatar-box" title="${this.escapeHTML(student.name)}">
+              <div class="deduct-avatar-fig">
+                ${QueueManager.getFigurineSVG(poseIndex, 40, student.id)}
+              </div>
+            </div>
+            <div class="deduct-name-box">
+              <span class="deduct-name" title="${this.escapeHTML(student.name)}">${this.escapeHTML(student.name)}</span>
+              <span class="deduct-rank-tag" id="deductTag_${student.id}">ลำดับที่ ${idx + 1} • หักไป ${student.deductionsCount || 0} ครั้ง</span>
+            </div>
+          </div>
+
+          <div class="deduct-bar-wrapper">
+            <div class="deduct-bar-labels">
+              <span class="deduct-score-text" id="deductScoreText_${student.id}" style="color: ${scoreColor};">
+                ${score} / ${this.initialScore} แต้ม
+              </span>
+              <span class="deduct-count-text" id="deductStatusText_${student.id}">
+                ${score <= 0 ? '💀 หมดพลัง' : score < 50 ? '⚠️ ระวัง' : '🌟 เรียบร้อย'}
+              </span>
+            </div>
+            <div class="deduct-bar-track">
+              <div class="deduct-bar-fill ${tierClass}" id="deductBarFill_${student.id}" style="width: ${percent}%;"></div>
+            </div>
+          </div>
+
+          <div class="deduct-btn-box">
+            <button type="button" class="btn-deduct" id="deductBtn_${student.id}" data-student-id="${student.id}" ${score <= 0 ? 'disabled' : ''} title="หักคะแนน ${this.escapeHTML(student.name)} ${this.deductStep} แต้ม">
+              <span>-${this.deductStep} แต้ม</span> 💥
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  handleResetAll() {
+    if (confirm(`ต้องการรีเซ็ตคะแนนความประพฤติของทุกคนกลับเป็น ${this.initialScore} คะแนนเต็มใช่หรือไม่?`)) {
+      this.students.forEach(s => {
+        s.behaviorScore = this.initialScore;
+        s.deductionsCount = 0;
+      });
+      if (this.onResetAll) this.onResetAll();
+      this.render();
+    }
+  }
+
   handleDeductStudent(studentId, btnElement) {
-    const student = this.students.find(s => s.id === studentId);
-    if (!student || student.behaviorScore <= 0) return;
+    const student = this.students.find(s => String(s.id) === String(studentId));
+    if (!student) {
+      console.warn('Student not found:', studentId);
+      return;
+    }
+
+    const currentScore = student.behaviorScore !== undefined ? student.behaviorScore : this.initialScore;
+    if (currentScore <= 0) return;
 
     // Deduct points
-    const oldScore = student.behaviorScore;
-    student.behaviorScore = Math.max(0, student.behaviorScore - this.deductStep);
+    const oldScore = currentScore;
+    const newScore = Math.max(0, currentScore - this.deductStep);
+    student.behaviorScore = newScore;
     student.deductionsCount = (student.deductionsCount || 0) + 1;
 
     // Play Sound
     sounds.playDeduct();
 
-    // Visual animation on Item
+    // 1. Instant targeted DOM update for this student
     const itemEl = document.getElementById(`deductItem_${student.id}`);
+    const scoreTextEl = document.getElementById(`deductScoreText_${student.id}`);
+    const statusTextEl = document.getElementById(`deductStatusText_${student.id}`);
+    const barFillEl = document.getElementById(`deductBarFill_${student.id}`);
+    const tagEl = document.getElementById(`deductTag_${student.id}`);
+    const btnEl = btnElement || document.getElementById(`deductBtn_${student.id}`);
+
+    const percent = Math.max(0, Math.min(100, (newScore / this.initialScore) * 100));
+    const tierClass = this.getTierClass(newScore, this.initialScore);
+    const scoreColor = this.getScoreColor(newScore, this.initialScore);
+
+    if (scoreTextEl) {
+      scoreTextEl.textContent = `${newScore} / ${this.initialScore} แต้ม`;
+      scoreTextEl.style.color = scoreColor;
+    }
+
+    if (statusTextEl) {
+      statusTextEl.textContent = newScore <= 0 ? '💀 หมดพลัง' : newScore < 50 ? '⚠️ ระวัง' : '🌟 เรียบร้อย';
+    }
+
+    if (barFillEl) {
+      barFillEl.style.width = `${percent}%`;
+      barFillEl.className = `deduct-bar-fill ${tierClass}`;
+    }
+
+    if (tagEl) {
+      tagEl.textContent = `หักไป ${student.deductionsCount} ครั้ง`;
+    }
+
+    if (btnEl && newScore <= 0) {
+      btnEl.disabled = true;
+    }
+
+    // Update Toolbar total deductions pill
+    const totalDeductions = this.students.reduce((sum, s) => sum + (s.deductionsCount || 0), 0);
+    const totalDeductedPoints = totalDeductions * this.deductStep;
+    const totalPill = document.getElementById('deductTotalPill');
+    if (totalPill) {
+      totalPill.textContent = `💥 หักรวมทั้งห้อง: ${totalDeductions} ครั้ง (-${totalDeductedPoints} แต้ม)`;
+    }
+
+    // 2. Shake & Floating Text animation
     if (itemEl) {
       itemEl.classList.remove('shaking');
       void itemEl.offsetWidth; // trigger reflow
       itemEl.classList.add('shaking');
 
-      // Floating -5 text
       const floater = document.createElement('div');
       floater.className = 'floating-deduct-text';
       floater.textContent = `-${this.deductStep}`;
@@ -235,12 +364,10 @@ export class DeductManager {
       setTimeout(() => floater.remove(), 850);
     }
 
+    // 3. Trigger callback to sync app state, history, and localStorage
     if (this.onDeduct) {
       this.onDeduct(student, this.deductStep, oldScore);
     }
-
-    // Re-render to update bars and numbers smoothly
-    setTimeout(() => this.render(), 180);
   }
 
   hashCode(str) {
