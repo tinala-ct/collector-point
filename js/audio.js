@@ -150,6 +150,31 @@ class SoundController {
     });
   }
 
+  // Behavior deduction sound - comical soft boop/drop
+  playDeduct() {
+    if (this.isMuted) return;
+    this.ensureContextActive();
+    if (!this.audioCtx) return;
+
+    try {
+      const osc = this.audioCtx.createOscillator();
+      const gain = this.audioCtx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, this.audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(140, this.audioCtx.currentTime + 0.18);
+
+      gain.gain.setValueAtTime(this.volume * 0.5, this.audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.18);
+
+      osc.connect(gain);
+      gain.connect(this.audioCtx.destination);
+
+      osc.start();
+      osc.stop(this.audioCtx.currentTime + 0.18);
+    } catch (e) {}
+  }
+
   // Grand fanfare for end-of-game podium
   playFanfare() {
     if (this.isMuted) return;

@@ -7,10 +7,11 @@
   <meta name="description" content="เครื่องมือสุ่มชื่อนักเรียนด้วยวงล้อหมุน พร้อมระบบเก็บคะแนนตอบถูก-ตอบผิด สรุปสถิติ Max/Min/Avg มอบรางวัล และ Export ผลคะแนน">
   
   <!-- CSS Stylesheets -->
-  <link rel="stylesheet" href="css/main.css?v=1.3">
-  <link rel="stylesheet" href="css/wheel.css?v=1.3">
-  <link rel="stylesheet" href="css/queue.css?v=1.3">
-  <link rel="stylesheet" href="css/scoreboard.css?v=1.3">
+  <link rel="stylesheet" href="css/main.css?v=1.4">
+  <link rel="stylesheet" href="css/wheel.css?v=1.4">
+  <link rel="stylesheet" href="css/queue.css?v=1.4">
+  <link rel="stylesheet" href="css/deduct.css?v=1.4">
+  <link rel="stylesheet" href="css/scoreboard.css?v=1.4">
 </head>
 <body>
 
@@ -29,6 +30,7 @@
       <div class="mode-toggle-group" title="เลือกรูปแบบกิจกรรม">
         <button id="modeWheelBtn" class="mode-toggle-btn active" data-mode="wheel">🎡 สุ่มวงล้อ</button>
         <button id="modeQueueBtn" class="mode-toggle-btn" data-mode="queue">🚶 เข้าแถวตอบ</button>
+        <button id="modeDeductBtn" class="mode-toggle-btn" data-mode="deduct">📊 กราฟตัดแต้ม</button>
       </div>
 
       <!-- Class Selector -->
@@ -118,6 +120,11 @@
       <!-- Sequential Clay Figurine Queue Card -->
       <div id="queueCard" class="queue-card" style="display: none;">
         <!-- Dynamically rendered by QueueManager in js/queue.js -->
+      </div>
+
+      <!-- Behavior Point Deduction Bar Chart Card -->
+      <div id="deductCard" class="deduct-card" style="display: none;">
+        <!-- Dynamically rendered by DeductManager in js/deduct.js -->
       </div>
     </section>
 
@@ -372,7 +379,25 @@
             <select id="settingGameMode">
               <option value="wheel">🎡 สุ่มรายชื่อด้วยวงล้อ (Random Wheel)</option>
               <option value="queue">🚶 เข้าแถวเรียงตอบตามลำดับ (Sequential Queue)</option>
+              <option value="deduct">📊 กราฟตัดคะแนนพฤติกรรม (Behavior Deduction)</option>
             </select>
+          </div>
+
+          <!-- Deduct Mode Settings -->
+          <div class="form-field" id="deductSettingsGroup">
+            <label for="settingInitialScore">
+              <span>คะแนนพฤติกรรมเริ่มต้น (Initial Points):</span>
+            </label>
+            <input type="number" id="settingInitialScore" class="input-text" min="10" max="1000" value="100">
+            <span class="help-text">คะแนนเต็มเริ่มต้นของนักเรียนทุกคนในโหมดกราฟตัดแต้ม (ค่าเริ่มต้น: 100)</span>
+          </div>
+
+          <div class="form-field">
+            <label for="settingDeductStep">
+              <span>คะแนนที่ลดต่อครั้งเมื่อทำตัวไม่น่ารัก:</span>
+            </label>
+            <input type="number" id="settingDeductStep" class="input-text" min="1" max="50" value="5">
+            <span class="help-text">จำนวนคะแนนที่ถูกหักในแต่ละครั้งเมื่อกดปุ่ม (ค่าเริ่มต้น: 5 แต้ม)</span>
           </div>
 
           <div class="form-field">
@@ -488,6 +513,6 @@
   </footer>
 
   <!-- Scripts -->
-  <script type="module" src="js/app.js?v=1.3"></script>
+  <script type="module" src="js/app.js?v=1.4"></script>
 </body>
 </html>

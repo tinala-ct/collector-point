@@ -4,6 +4,7 @@
 
 import { WheelEngine, COLOR_PALETTES } from './wheel.js';
 import { QueueManager } from './queue.js';
+import { DeductManager } from './deduct.js';
 import { sounds } from './audio.js';
 import { confetti } from './confetti.js';
 import { StorageManager } from './storage.js';
@@ -19,6 +20,7 @@ class ClassroomApp {
     this.currentPickedStudent = null;
     this.wheel = null;
     this.queueManager = null;
+    this.deductManager = null;
     this.shuffleBag = [];
     this.lastPickedStudentId = null;
 
@@ -50,6 +52,14 @@ class ClassroomApp {
       onAnswerSubmit: (student, outcome) => this.handleQueueAnswer(student, outcome)
     });
 
+    // Initialize Behavior Deduct Manager
+    this.deductManager = new DeductManager('deductCard', {
+      initialScore: this.settings.initialDeductScore || 100,
+      deductStep: this.settings.deductStep || 5,
+      onDeduct: (student, step, oldScore) => this.handleDeductRecord(student, step, oldScore),
+      onResetAll: () => this.saveCurrentClass()
+    });
+
     this.bindDOM();
     this.bindEvents();
     this.setGameMode(this.settings.gameMode || 'wheel', false);
@@ -60,8 +70,10 @@ class ClassroomApp {
     // Header & Mode Controls
     this.modeWheelBtn = document.getElementById('modeWheelBtn');
     this.modeQueueBtn = document.getElementById('modeQueueBtn');
+    this.modeDeductBtn = document.getElementById('modeDeductBtn');
     this.wheelCard = document.getElementById('wheelCard');
     this.queueCard = document.getElementById('queueCard');
+    this.deductCard = document.getElementById('deductCard');
 
     this.classSelect = document.getElementById('classSelect');
     this.themeToggleBtn = document.getElementById('themeToggleBtn');
@@ -112,6 +124,8 @@ class ClassroomApp {
     this.settingsModal = document.getElementById('settingsModal');
     this.settingGameMode = document.getElementById('settingGameMode');
     this.settingRandomAlgorithm = document.getElementById('settingRandomAlgorithm');
+    this.settingInitialScore = document.getElementById('settingInitialScore');
+    this.settingDeductStep = document.getElementById('settingDeductStep');
     this.settingQuestions = document.getElementById('settingQuestions');
     this.settingPoints = document.getElementById('settingPoints');
     this.settingBonus = document.getElementById('settingBonus');
@@ -143,6 +157,9 @@ class ClassroomApp {
     }
     if (this.modeQueueBtn) {
       this.modeQueueBtn.addEventListener('click', () => this.setGameMode('queue'));
+    }
+    if (this.modeDeductBtn) {
+      this.modeDeductBtn.addEventListener('click', () => this.setGameMode('deduct'));
     }
 
     // Wheel Spin Actions
@@ -288,21 +305,24 @@ class ClassroomApp {
     this.settings.gameMode = mode;
     if (save) StorageManager.saveSettings(this.settings);
 
-    if (this.modeWheelBtn && this.modeQueueBtn) {
-      this.modeWheelBtn.classList.toggle('active', mode === 'wheel');
-      this.modeQueueBtn.classList.toggle('active', mode === 'queue');
-    }
+    if (this.modeWheelBtn) this.modeWheelBtn.classList.toggle('active', mode === 'wheel');
+    if (this.modeQueueBtn) this.modeQueueBtn.classList.toggle('active', mode === 'queue');
+    if (this.modeDeductBtn) this.modeDeductBtn.classList.toggle('active', mode === 'deduct');
 
-    if (this.wheelCard && this.queueCard) {
-      if (mode === 'wheel') {
-        this.wheelCard.style.display = 'flex';
-        this.queueCard.style.display = 'none';
-        this.updateWheelItems();
-      } else {
-        this.wheelCard.style.display = 'none';
-        this.queueCard.style.display = 'flex';
-        this.queueManager.setStudents(this.currentClass.students || []);
-      }
+    if (this.wheelCard) this.wheelCard.style.display = (mode === 'wheel') ? 'flex' : 'none';
+    if (this.queueCard) this.queueCard.style.display = (mode === 'queue') ? 'flex' : 'none';
+    if (this.deductCard) this.deductCard.style.display = (mode === 'deduct') ? 'flex' : 'none';
+
+    if (mode === 'wheel') {
+      this.updateWheelItems();
+    } else if (mode === 'queue') {
+      this.queueManager.setStudents(this.currentClass.students || []);
+    } else if (mode === 'deduct') {
+      this.deductManager.setStudents(
+        this.currentClass.students || [],
+        this.settings.initialDeductScore || 100,
+        this.settings.deductStep || 5
+      );
     }
   }
 
@@ -315,8 +335,14 @@ class ClassroomApp {
 
     if (this.settings.gameMode === 'wheel') {
       this.updateWheelItems();
-    } else {
+    } else if (this.settings.gameMode === 'queue') {
       this.queueManager.setStudents(this.currentClass.students || []);
+    } else if (this.settings.gameMode === 'deduct') {
+      this.deductManager.setStudents(
+        this.currentClass.students || [],
+        this.settings.initialDeductScore || 100,
+        this.settings.deductStep || 5
+      );
     }
   }
 
@@ -388,12 +414,39 @@ class ClassroomApp {
     });
   }
 
+  handleDeductRecord(student, step, oldScore) {
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+    this.history.push({
+      round: 'ลดคะแนน',
+      studentName: student.name,
+      outcome: 'deduct',
+      points: -step,
+      time: timeStr
+    });
+
+    this.saveCurrentClass();
+    this.renderScoreboard();
+    this.renderHistory();
+  }
+
   renderScoreboard() {
     this.scoreboardBody.innerHTML = '';
     const students = [...(this.currentClass.students || [])];
+    const isDeductMode = this.settings.gameMode === 'deduct';
+    const initScore = this.settings.initialDeductScore || 100;
 
-    // Sort by score descending, then by name
-    students.sort((a, b) => (b.score - a.score) || a.name.localeCompare(b.name, 'th'));
+    // Sort by score or behaviorScore depending on mode
+    if (isDeductMode) {
+      students.sort((a, b) => {
+        const aScore = a.behaviorScore !== undefined ? a.behaviorScore : initScore;
+        const bScore = b.behaviorScore !== undefined ? b.behaviorScore : initScore;
+        return (bScore - aScore) || a.name.localeCompare(b.name, 'th');
+      });
+    } else {
+      students.sort((a, b) => (b.score - a.score) || a.name.localeCompare(b.name, 'th'));
+    }
 
     if (students.length === 0) {
       this.scoreboardBody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:var(--text-muted);">ไม่มีข้อมูลคะแนน</td></tr>`;
@@ -407,24 +460,45 @@ class ClassroomApp {
       else if (index === 1) rankBadgeClass += ' rank-2';
       else if (index === 2) rankBadgeClass += ' rank-3';
 
-      const accuracy = student.answeredCount > 0 
-        ? Math.round((student.correctCount / student.answeredCount) * 100) 
-        : 0;
+      if (isDeductMode) {
+        const behScore = student.behaviorScore !== undefined ? student.behaviorScore : initScore;
+        const deductCount = student.deductionsCount || 0;
+        const scoreColor = behScore >= 80 ? 'var(--success)' : behScore >= 50 ? '#eab308' : 'var(--danger)';
 
-      tr.innerHTML = `
-        <td style="width: 40px; text-align:center;">
-          <span class="${rankBadgeClass}">${index + 1}</span>
-        </td>
-        <td style="font-weight:600;">
-          ${this.escapeHTML(student.name)}
-        </td>
-        <td style="text-align:center;">
-          <span class="score-badge">⭐ ${student.score}</span>
-        </td>
-        <td style="text-align:center; font-size:0.8rem; color:var(--text-muted);">
-          ${student.correctCount}/${student.answeredCount} (${accuracy}%)
-        </td>
-      `;
+        tr.innerHTML = `
+          <td style="width: 40px; text-align:center;">
+            <span class="${rankBadgeClass}">${index + 1}</span>
+          </td>
+          <td style="font-weight:600;">
+            ${this.escapeHTML(student.name)}
+          </td>
+          <td style="text-align:center;">
+            <span class="score-badge" style="color:${scoreColor}; font-weight:700;">💚 ${behScore}/${initScore}</span>
+          </td>
+          <td style="text-align:center; font-size:0.8rem; color:var(--text-muted);">
+            ${deductCount === 0 ? '✨ ไม่โดนหัก' : `หัก ${deductCount} ครั้ง (-${deductCount * (this.settings.deductStep || 5)})`}
+          </td>
+        `;
+      } else {
+        const accuracy = student.answeredCount > 0 
+          ? Math.round((student.correctCount / student.answeredCount) * 100) 
+          : 0;
+
+        tr.innerHTML = `
+          <td style="width: 40px; text-align:center;">
+            <span class="${rankBadgeClass}">${index + 1}</span>
+          </td>
+          <td style="font-weight:600;">
+            ${this.escapeHTML(student.name)}
+          </td>
+          <td style="text-align:center;">
+            <span class="score-badge">⭐ ${student.score}</span>
+          </td>
+          <td style="text-align:center; font-size:0.8rem; color:var(--text-muted);">
+            ${student.correctCount}/${student.answeredCount} (${accuracy}%)
+          </td>
+        `;
+      }
 
       this.scoreboardBody.appendChild(tr);
     });
@@ -433,7 +507,7 @@ class ClassroomApp {
   renderHistory() {
     this.historyList.innerHTML = '';
     if (this.history.length === 0) {
-      this.historyList.innerHTML = `<div style="text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">ยังไม่มีประวัติการตอบคำถามในคาบนี้</div>`;
+      this.historyList.innerHTML = `<div style="text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">ยังไม่มีประวัติในคาบนี้</div>`;
       return;
     }
 
@@ -444,11 +518,12 @@ class ClassroomApp {
       let outcomeText = '';
       if (item.outcome === 'correct') outcomeText = `<span style="color:var(--success); font-weight:700;">✅ ถูก (+${item.points})</span>`;
       else if (item.outcome === 'wrong') outcomeText = `<span style="color:var(--danger); font-weight:700;">❌ ผิด (0)</span>`;
+      else if (item.outcome === 'deduct') outcomeText = `<span style="color:var(--danger); font-weight:700;">💥 หัก (${item.points} แต้ม)</span>`;
       else outcomeText = `<span style="color:var(--text-muted);">⏭️ ข้าม</span>`;
 
       div.innerHTML = `
         <div>
-          <strong style="color:var(--primary);">ข้อ ${item.round}:</strong>
+          <strong style="color:var(--primary);">${item.round.startsWith('ข้อ') ? item.round : item.round + ':'}</strong>
           <span style="font-weight:600; margin-left:0.35rem;">${this.escapeHTML(item.studentName)}</span>
         </div>
         <div style="display:flex; align-items:center; gap:0.5rem;">
@@ -692,8 +767,22 @@ class ClassroomApp {
 
   calculateStats() {
     const students = this.currentClass.students || [];
+    const isDeductMode = this.settings.gameMode === 'deduct';
+    const initScore = this.settings.initialDeductScore || 100;
+
     if (students.length === 0) {
-      return { maxScore: 0, minScore: 0, avgScore: 0, totalAnswered: 0, accuracy: 0 };
+      return { maxScore: 0, minScore: 0, avgScore: 0, totalAnswered: 0, accuracy: 0, isDeductMode };
+    }
+
+    if (isDeductMode) {
+      const behScores = students.map(s => s.behaviorScore !== undefined ? s.behaviorScore : initScore);
+      const maxScore = Math.max(...behScores);
+      const minScore = Math.min(...behScores);
+      const totalScore = behScores.reduce((sum, s) => sum + s, 0);
+      const avgScore = (totalScore / students.length).toFixed(1);
+      const totalDeductions = students.reduce((sum, s) => sum + (s.deductionsCount || 0), 0);
+
+      return { maxScore, minScore, avgScore, totalAnswered: totalDeductions, accuracy: 100, isDeductMode, totalDeductions, initScore };
     }
 
     const scores = students.map(s => s.score);
@@ -706,36 +795,63 @@ class ClassroomApp {
     const totalCorrect = students.reduce((sum, s) => sum + (s.correctCount || 0), 0);
     const accuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
 
-    return { maxScore, minScore, avgScore, totalAnswered, totalCorrect, accuracy };
+    return { maxScore, minScore, avgScore, totalAnswered, totalCorrect, accuracy, isDeductMode };
   }
 
   showGameSummary() {
     const students = [...(this.currentClass.students || [])];
-    students.sort((a, b) => (b.score - a.score) || (b.correctCount - a.correctCount));
+    const isDeductMode = this.settings.gameMode === 'deduct';
+    const initScore = this.settings.initialDeductScore || 100;
+
+    if (isDeductMode) {
+      students.sort((a, b) => {
+        const aScore = a.behaviorScore !== undefined ? a.behaviorScore : initScore;
+        const bScore = b.behaviorScore !== undefined ? b.behaviorScore : initScore;
+        return (bScore - aScore) || (a.deductionsCount || 0) - (b.deductionsCount || 0);
+      });
+    } else {
+      students.sort((a, b) => (b.score - a.score) || (b.correctCount - a.correctCount));
+    }
 
     const stats = this.calculateStats();
     sounds.playFanfare();
     confetti.shoot({ count: 150 });
 
     // Populate Stats Cards
-    document.getElementById('summaryMaxScore').textContent = `${stats.maxScore} คะแนน`;
-    document.getElementById('summaryMinScore').textContent = `${stats.minScore} คะแนน`;
-    document.getElementById('summaryAvgScore').textContent = `${stats.avgScore} คะแนน`;
-    document.getElementById('summaryAccuracy').textContent = `${stats.accuracy}%`;
+    if (isDeductMode) {
+      document.getElementById('summaryMaxScore').textContent = `${stats.maxScore} แต้ม`;
+      document.getElementById('summaryMinScore').textContent = `${stats.minScore} แต้ม`;
+      document.getElementById('summaryAvgScore').textContent = `${stats.avgScore} แต้ม`;
+      document.getElementById('summaryAccuracy').textContent = `หัก ${stats.totalDeductions} ครั้ง`;
+    } else {
+      document.getElementById('summaryMaxScore').textContent = `${stats.maxScore} คะแนน`;
+      document.getElementById('summaryMinScore').textContent = `${stats.minScore} คะแนน`;
+      document.getElementById('summaryAvgScore').textContent = `${stats.avgScore} คะแนน`;
+      document.getElementById('summaryAccuracy').textContent = `${stats.accuracy}%`;
+    }
 
     // Populate Podium 1st, 2nd, 3rd
     const p1 = students[0];
     const p2 = students[1];
     const p3 = students[2];
 
+    const getScoreStr = (st) => {
+      if (!st) return '';
+      if (isDeductMode) {
+        const s = st.behaviorScore !== undefined ? st.behaviorScore : initScore;
+        return `เหลือ ${s} แต้ม`;
+      }
+      return `${st.score} คะแนน`;
+    };
+
     document.getElementById('podium1Name').textContent = p1 ? p1.name : '-';
-    document.getElementById('podium1Score').textContent = p1 ? `${p1.score} คะแนน` : '';
+    document.getElementById('podium1Score').textContent = getScoreStr(p1);
 
     document.getElementById('podium2Name').textContent = p2 ? p2.name : '-';
-    document.getElementById('podium2Score').textContent = p2 ? `${p2.score} คะแนน` : '';
+    document.getElementById('podium2Score').textContent = getScoreStr(p2);
 
     document.getElementById('podium3Name').textContent = p3 ? p3.name : '-';
-    document.getElementById('podium3Score').textContent = p3 ? `${p3.score} คะแนน` : '';
+    document.getElementById('podium3Score').textContent = getScoreStr(p3);
 
     // Calculate Badges / Awards
     this.renderAwards(students);
@@ -745,13 +861,24 @@ class ClassroomApp {
     summaryTableBody.innerHTML = '';
     students.forEach((s, idx) => {
       const tr = document.createElement('tr');
-      const acc = s.answeredCount > 0 ? Math.round((s.correctCount / s.answeredCount) * 100) : 0;
-      tr.innerHTML = `
-        <td style="text-align:center; font-weight:700;">${idx + 1}</td>
-        <td style="font-weight:600;">${this.escapeHTML(s.name)}</td>
-        <td style="text-align:center; font-weight:700; color:var(--secondary);">${s.score}</td>
-        <td style="text-align:center;">${s.correctCount}/${s.answeredCount} (${acc}%)</td>
-      `;
+      if (isDeductMode) {
+        const behScore = s.behaviorScore !== undefined ? s.behaviorScore : initScore;
+        const deductCount = s.deductionsCount || 0;
+        tr.innerHTML = `
+          <td style="text-align:center; font-weight:700;">${idx + 1}</td>
+          <td style="font-weight:600;">${this.escapeHTML(s.name)}</td>
+          <td style="text-align:center; font-weight:700; color:var(--success);">${behScore}/${initScore}</td>
+          <td style="text-align:center;">โดนหัก ${deductCount} ครั้ง (-${deductCount * (this.settings.deductStep || 5)})</td>
+        `;
+      } else {
+        const acc = s.answeredCount > 0 ? Math.round((s.correctCount / s.answeredCount) * 100) : 0;
+        tr.innerHTML = `
+          <td style="text-align:center; font-weight:700;">${idx + 1}</td>
+          <td style="font-weight:600;">${this.escapeHTML(s.name)}</td>
+          <td style="text-align:center; font-weight:700; color:var(--secondary);">${s.score}</td>
+          <td style="text-align:center;">${s.correctCount}/${s.answeredCount} (${acc}%)</td>
+        `;
+      }
       summaryTableBody.appendChild(tr);
     });
 
@@ -764,6 +891,40 @@ class ClassroomApp {
 
     if (students.length === 0) return;
 
+    const isDeductMode = this.settings.gameMode === 'deduct';
+    const initScore = this.settings.initialDeductScore || 100;
+
+    if (isDeductMode) {
+      // 1. Guardian Angel / Best Behavior (Student with max score)
+      const topDisciplined = students[0];
+      const topScore = topDisciplined ? (topDisciplined.behaviorScore !== undefined ? topDisciplined.behaviorScore : initScore) : 0;
+      if (topDisciplined) {
+        awardsContainer.appendChild(this.createBadgeCard('🌟', 'เทพบุตร/นางฟ้าประจำคาบ (Best Behavior)', `รักษาคะแนนความประพฤติได้มากที่สุด`, topDisciplined.name, `เหลือ ${topScore}/${initScore} แต้ม`));
+      }
+
+      // 2. Zero Deductions (Never got deducted)
+      const zeroDeduct = students.filter(s => (s.deductionsCount || 0) === 0);
+      if (zeroDeduct.length > 0) {
+        const firstZero = zeroDeduct[0];
+        if (firstZero !== topDisciplined || zeroDeduct.length > 1) {
+          const target = zeroDeduct.find(s => s !== topDisciplined) || firstZero;
+          awardsContainer.appendChild(this.createBadgeCard('🛡️', 'โล่เหล็กวินัยดีเด่น (Zero Deductions)', `ไม่เคยโดนหักคะแนนเลยตลอดคาบ`, target.name, `แต้มเต็ม ${initScore}`));
+        }
+      }
+
+      // 3. Survivor (Positive remaining score)
+      const survivors = students.filter(s => (s.behaviorScore !== undefined ? s.behaviorScore : initScore) > 0);
+      if (survivors.length > 0) {
+        const activeSurvivor = survivors[Math.floor(survivors.length / 2)];
+        if (activeSurvivor && activeSurvivor !== topDisciplined) {
+          const survScore = activeSurvivor.behaviorScore !== undefined ? activeSurvivor.behaviorScore : initScore;
+          awardsContainer.appendChild(this.createBadgeCard('🎖️', 'นักสู้ผู้รักษาวินัย (Disciplined Learner)', `พยายามรักษาวินัยในห้องเรียนอย่างดี`, activeSurvivor.name, `เหลือ ${survScore} แต้ม`));
+        }
+      }
+      return;
+    }
+
+    // Standard Wheel & Queue Awards
     // 1. Top Scorer
     const topScorer = students[0];
     if (topScorer && topScorer.score > 0) {
@@ -815,6 +976,8 @@ class ClassroomApp {
   openSettingsModal() {
     if (this.settingGameMode) this.settingGameMode.value = this.settings.gameMode || 'wheel';
     if (this.settingRandomAlgorithm) this.settingRandomAlgorithm.value = this.settings.randomAlgorithm || 'smart_balanced';
+    if (this.settingInitialScore) this.settingInitialScore.value = this.settings.initialDeductScore || 100;
+    if (this.settingDeductStep) this.settingDeductStep.value = this.settings.deductStep || 5;
     this.settingQuestions.value = this.settings.totalQuestions;
     this.settingPoints.value = this.settings.pointsPerQuestion;
     this.settingBonus.value = this.settings.bonusPoints;
@@ -834,6 +997,12 @@ class ClassroomApp {
     if (this.settingRandomAlgorithm) {
       this.settings.randomAlgorithm = this.settingRandomAlgorithm.value;
       this.shuffleBag = []; // Reset shuffle bag when algorithm changes
+    }
+    if (this.settingInitialScore) {
+      this.settings.initialDeductScore = parseInt(this.settingInitialScore.value, 10) || 100;
+    }
+    if (this.settingDeductStep) {
+      this.settings.deductStep = parseInt(this.settingDeductStep.value, 10) || 5;
     }
     this.settings.totalQuestions = parseInt(this.settingQuestions.value, 10) || 10;
     this.settings.pointsPerQuestion = parseInt(this.settingPoints.value, 10) || 1;
@@ -1002,8 +1171,11 @@ class ClassroomApp {
   }
 
   handleResetScores() {
+    const initScore = this.settings.initialDeductScore || 100;
     (this.currentClass.students || []).forEach(s => {
       s.score = 0;
+      s.behaviorScore = initScore;
+      s.deductionsCount = 0;
       s.answeredCount = 0;
       s.correctCount = 0;
       s.wrongCount = 0;

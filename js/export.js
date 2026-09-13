@@ -24,10 +24,15 @@ export const ExportManager = {
     csvContent += `คะแนนเฉลี่ย (Average): ${stats.avgScore} คะแนน\n\n`;
 
     // Table Header
-    csvContent += `อันดับ,ชื่อ-นามสกุล,คะแนนสะสม,จำนวนครั้งที่ตอบ,ตอบถูก (ครั้ง),ตอบผิด (ครั้ง),อัตราตอบถูก (%)\n`;
+    csvContent += `อันดับ,ชื่อ-นามสกุล,คะแนนสะสม (ตอบคำถาม),คะแนนความประพฤติคงเหลือ,จำนวนครั้งที่โดนหักคะแนน,จำนวนครั้งที่ตอบ,ตอบถูก (ครั้ง),ตอบผิด (ครั้ง),อัตราตอบถูก (%)\n`;
 
-    // Sort by score descending
-    const sorted = [...students].sort((a, b) => b.score - a.score);
+    // Sort by score or behaviorScore depending on game
+    const sorted = [...students].sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const bBeh = b.behaviorScore !== undefined ? b.behaviorScore : 100;
+      const aBeh = a.behaviorScore !== undefined ? a.behaviorScore : 100;
+      return bBeh - aBeh;
+    });
 
     sorted.forEach((student, index) => {
       const accuracy = student.answeredCount > 0 
@@ -35,7 +40,9 @@ export const ExportManager = {
         : 0;
       
       const safeName = `"${student.name.replace(/"/g, '""')}"`;
-      csvContent += `${index + 1},${safeName},${student.score},${student.answeredCount},${student.correctCount},${student.wrongCount},${accuracy}%\n`;
+      const behScore = student.behaviorScore !== undefined ? student.behaviorScore : 100;
+      const deductCount = student.deductionsCount || 0;
+      csvContent += `${index + 1},${safeName},${student.score},${behScore},${deductCount},${student.answeredCount},${student.correctCount},${student.wrongCount},${accuracy}%\n`;
     });
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

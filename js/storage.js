@@ -43,8 +43,10 @@ const DEFAULT_SAMPLE_CLASSES = [
 ];
 
 const DEFAULT_SETTINGS = {
-  gameMode: 'wheel', // 'wheel' or 'queue'
+  gameMode: 'wheel', // 'wheel' | 'queue' | 'deduct'
   randomAlgorithm: 'smart_balanced', // 'smart_balanced' | 'shuffle_bag' | 'pure_random'
+  initialDeductScore: 100, // Starting score for Deduct Mode
+  deductStep: 5, // Points deducted per action
   totalQuestions: 10,
   pointsPerQuestion: 1,
   bonusPoints: 2,

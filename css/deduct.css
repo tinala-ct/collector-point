@@ -1,0 +1,295 @@
+/* ==========================================================================
+   CLASSROOM LUCKY WHEEL - BEHAVIOR POINT DEDUCTION & BAR CHART STYLES
+   ========================================================================== */
+
+/* Main Stage Container for Deduct Mode */
+.deduct-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  min-height: 540px;
+  gap: 1.25rem;
+}
+
+/* Toolbar Controls on Top of Deduct Stage */
+.deduct-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-sidebar);
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.deduct-stats-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.deduct-stats-badge .stat-pill {
+  background: #fef2f2;
+  color: var(--danger);
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  border: 1px solid #fecaca;
+}
+
+[data-theme="dark"] .deduct-stats-badge .stat-pill {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.deduct-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Student Bar Grid */
+.deduct-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  overflow-y: auto;
+  max-height: 520px;
+  padding-right: 0.35rem;
+}
+
+/* Individual Student Deduction Card */
+.deduct-item {
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  position: relative;
+  transition: all 0.25s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.deduct-item:hover {
+  border-color: var(--border-focus);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.deduct-item.shaking {
+  animation: deductShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes deductShake {
+  10%, 90% { transform: translate3d(-2px, 0, 0); }
+  20%, 80% { transform: translate3d(4px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+  40%, 60% { transform: translate3d(6px, 0, 0); }
+}
+
+/* Student Info & Avatar */
+.deduct-student-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.deduct-avatar-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--bg-sidebar);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--border-color);
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.deduct-avatar-fig {
+  width: 36px;
+  height: 40px;
+}
+
+.deduct-name-box {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.deduct-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deduct-rank-tag {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Progress Bar (Health / Point Meter) */
+.deduct-bar-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 140px;
+}
+
+.deduct-bar-track {
+  width: 100%;
+  height: 22px;
+  background: var(--bg-sidebar);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.deduct-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.4s ease;
+  position: relative;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+/* Dynamic Color Tiers based on remaining points */
+.bar-tier-green {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.bar-tier-yellow {
+  background: linear-gradient(90deg, #eab308, #facc15);
+}
+
+.bar-tier-orange {
+  background: linear-gradient(90deg, #f97316, #fb923c);
+}
+
+.bar-tier-red {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+.bar-tier-empty {
+  background: #64748b;
+  opacity: 0.4;
+}
+
+.deduct-bar-labels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.deduct-score-text {
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: 'Fredoka', 'Prompt', sans-serif;
+}
+
+.deduct-count-text {
+  color: var(--text-muted);
+}
+
+/* Action Button: Deduct Points */
+.deduct-btn-box {
+  flex-shrink: 0;
+  position: relative;
+}
+
+.btn-deduct {
+  background: #fef2f2;
+  border: 1.5px solid #fca5a5;
+  color: #dc2626;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.15s ease;
+  user-select: none;
+  box-shadow: 0 2px 5px rgba(239, 68, 68, 0.12);
+}
+
+.btn-deduct:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.25);
+}
+
+.btn-deduct:active {
+  transform: scale(0.95);
+  background: #fecaca;
+}
+
+.btn-deduct:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Floating -5 Animation */
+.floating-deduct-text {
+  position: absolute;
+  top: -15px;
+  right: 15px;
+  font-family: 'Fredoka', 'Prompt', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #ef4444;
+  pointer-events: none;
+  animation: floatUpFade 0.85s forwards ease-out;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  z-index: 30;
+}
+
+@keyframes floatUpFade {
+  0% { transform: translateY(0) scale(0.8); opacity: 0; }
+  25% { transform: translateY(-10px) scale(1.2); opacity: 1; }
+  100% { transform: translateY(-38px) scale(1); opacity: 0; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 680px) {
+  .deduct-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+  .deduct-student-info {
+    width: 100%;
+  }
+  .deduct-btn-box {
+    align-self: flex-end;
+  }
+}
