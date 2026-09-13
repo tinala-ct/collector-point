@@ -39,129 +39,52 @@ export class QueueManager {
   }
 
   /**
-   * Generates clean SVG markup for cute 3D White Clay Figurine in given pose
+   * Generates a deterministic illustrated avatar. The same student id always
+   * receives the same face, while different students get varied combinations.
    */
   static getFigurineSVG(pose = 'stand', size = 140, id = '') {
-    const poseIndex = typeof pose === 'number' ? Math.abs(pose) % CLAY_POSES.length : CLAY_POSES.indexOf(pose);
-    const selectedPose = CLAY_POSES[poseIndex >= 0 ? poseIndex : 0];
-    const gradId = `clayGrad_${selectedPose}_${id || Math.random().toString(36).substr(2, 4)}`;
-
-    let bodyPaths = '';
-
-    if (selectedPose === 'flex') {
-      // Arms raised up flexing muscles (Pose 1 in photo)
-      bodyPaths = `
-        <!-- Head -->
-        <circle cx="50" cy="22" r="14" fill="url(#${gradId}_head)" filter="url(#${gradId}_shadow)" />
-        <!-- Torso -->
-        <path d="M 40 36 Q 50 34 60 36 Q 62 60 58 74 L 42 74 Q 38 60 40 36 Z" fill="url(#${gradId}_body)" />
-        <!-- Left Flex Arm -->
-        <path d="M 40 40 Q 22 42 22 28 Q 22 18 28 18 Q 32 18 32 26 Q 32 34 42 46 Z" fill="url(#${gradId}_body)" />
-        <!-- Right Flex Arm -->
-        <path d="M 60 40 Q 78 42 78 28 Q 78 18 72 18 Q 68 18 68 26 Q 68 34 58 46 Z" fill="url(#${gradId}_body)" />
-        <!-- Legs -->
-        <path d="M 42 72 Q 41 88 43 96 Q 47 98 50 94 L 50 72 Z" fill="url(#${gradId}_body)" />
-        <path d="M 58 72 Q 59 88 57 96 Q 53 98 50 94 L 50 72 Z" fill="url(#${gradId}_body)" />
-      `;
-    } else if (selectedPose === 'cheer') {
-      // Arms spread wide in Y-shape (Pose 5 in photo)
-      bodyPaths = `
-        <!-- Head -->
-        <circle cx="50" cy="22" r="14" fill="url(#${gradId}_head)" filter="url(#${gradId}_shadow)" />
-        <!-- Torso -->
-        <path d="M 41 36 Q 50 34 59 36 Q 61 60 57 74 L 43 74 Q 39 60 41 36 Z" fill="url(#${gradId}_body)" />
-        <!-- Left Cheering Arm -->
-        <path d="M 42 40 Q 24 28 12 20 Q 8 26 18 34 Q 30 42 42 48 Z" fill="url(#${gradId}_body)" />
-        <!-- Right Cheering Arm -->
-        <path d="M 58 40 Q 76 28 88 20 Q 92 26 82 34 Q 70 42 58 48 Z" fill="url(#${gradId}_body)" />
-        <!-- Legs Wide -->
-        <path d="M 43 72 Q 34 86 30 96 Q 36 98 42 90 L 50 74 Z" fill="url(#${gradId}_body)" />
-        <path d="M 57 72 Q 66 86 70 96 Q 64 98 58 90 L 50 74 Z" fill="url(#${gradId}_body)" />
-      `;
-    } else if (selectedPose === 'stretch') {
-      // Both arms cupping head (Pose 6 in photo)
-      bodyPaths = `
-        <!-- Head -->
-        <circle cx="50" cy="24" r="14" fill="url(#${gradId}_head)" filter="url(#${gradId}_shadow)" />
-        <!-- Torso -->
-        <path d="M 41 38 Q 50 36 59 38 Q 61 60 57 74 L 43 74 Q 39 60 41 38 Z" fill="url(#${gradId}_body)" />
-        <!-- Arms around head -->
-        <path d="M 41 42 Q 26 30 28 16 Q 34 8 48 10 Q 52 14 44 18 Q 36 22 41 36 Z" fill="url(#${gradId}_body)" />
-        <path d="M 59 42 Q 74 30 72 16 Q 66 8 52 10 Q 48 14 56 18 Q 64 22 59 36 Z" fill="url(#${gradId}_body)" />
-        <!-- Legs -->
-        <path d="M 43 72 L 43 96 Q 47 98 50 94 L 50 72 Z" fill="url(#${gradId}_body)" />
-        <path d="M 57 72 L 57 96 Q 53 98 50 94 L 50 72 Z" fill="url(#${gradId}_body)" />
-      `;
-    } else if (selectedPose === 'kneel') {
-      // Sitting / kneeling upright (Pose 7 in photo)
-      bodyPaths = `
-        <!-- Head -->
-        <circle cx="50" cy="24" r="14" fill="url(#${gradId}_head)" filter="url(#${gradId}_shadow)" />
-        <!-- Torso -->
-        <path d="M 40 38 Q 50 36 60 38 Q 62 58 58 68 L 42 68 Q 38 58 40 38 Z" fill="url(#${gradId}_body)" />
-        <!-- Arms resting at sides -->
-        <path d="M 41 40 Q 30 52 32 64 Q 37 66 40 60 L 43 46 Z" fill="url(#${gradId}_body)" />
-        <path d="M 59 40 Q 70 52 68 64 Q 63 66 60 60 L 57 46 Z" fill="url(#${gradId}_body)" />
-        <!-- Kneeling Legs (folded) -->
-        <path d="M 42 66 Q 38 78 40 90 Q 46 92 48 88 L 48 66 Z" fill="url(#${gradId}_body)" />
-        <path d="M 58 66 Q 62 78 60 90 Q 54 92 52 88 L 52 66 Z" fill="url(#${gradId}_body)" />
-      `;
-    } else if (selectedPose === 'lean') {
-      // Bending forward curiously (Pose 3 in photo)
-      bodyPaths = `
-        <!-- Head -->
-        <circle cx="42" cy="28" r="14" fill="url(#${gradId}_head)" filter="url(#${gradId}_shadow)" />
-        <!-- Torso bent forward -->
-        <path d="M 38 40 Q 56 34 66 42 Q 62 66 52 74 L 40 72 Q 40 56 38 40 Z" fill="url(#${gradId}_body)" />
-        <!-- Arms extending forward -->
-        <path d="M 44 42 Q 30 46 20 48 Q 18 54 28 54 Q 38 54 50 48 Z" fill="url(#${gradId}_body)" />
-        <!-- Legs -->
-        <path d="M 42 72 Q 44 86 46 96 Q 50 98 52 94 L 50 72 Z" fill="url(#${gradId}_body)" />
-        <path d="M 52 74 Q 56 86 58 96 Q 62 98 64 94 L 60 74 Z" fill="url(#${gradId}_body)" />
-      `;
-    } else {
-      // Default Stand (Pose 2 in photo)
-      bodyPaths = `
-        <!-- Head -->
-        <circle cx="50" cy="22" r="14" fill="url(#${gradId}_head)" filter="url(#${gradId}_shadow)" />
-        <!-- Torso -->
-        <path d="M 40 36 Q 50 34 60 36 Q 62 60 58 74 L 42 74 Q 38 60 40 36 Z" fill="url(#${gradId}_body)" />
-        <!-- Left Arm -->
-        <path d="M 40 38 Q 30 50 32 66 Q 37 68 40 62 L 43 44 Z" fill="url(#${gradId}_body)" />
-        <!-- Right Arm -->
-        <path d="M 60 38 Q 70 50 68 66 Q 63 68 60 62 L 57 44 Z" fill="url(#${gradId}_body)" />
-        <!-- Left Leg -->
-        <path d="M 42 72 L 42 96 Q 46 98 49 95 L 49 72 Z" fill="url(#${gradId}_body)" />
-        <!-- Right Leg -->
-        <path d="M 58 72 L 58 96 Q 54 98 51 95 L 51 72 Z" fill="url(#${gradId}_body)" />
-      `;
-    }
-
-    return `
-      <svg viewBox="0 0 100 100" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <!-- Soft White Matte Clay Shading -->
-          <radialGradient id="${gradId}_head" cx="35%" cy="30%" r="70%">
-            <stop offset="0%" stop-color="#ffffff" />
-            <stop offset="55%" stop-color="#f1f5f9" />
-            <stop offset="85%" stop-color="#cbd5e1" />
-            <stop offset="100%" stop-color="#94a3b8" />
-          </radialGradient>
-          
-          <linearGradient id="${gradId}_body" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#ffffff" />
-            <stop offset="35%" stop-color="#f8fafc" />
-            <stop offset="75%" stop-color="#e2e8f0" />
-            <stop offset="100%" stop-color="#94a3b8" />
-          </linearGradient>
-
-          <filter id="${gradId}_shadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.12" />
-          </filter>
-        </defs>
-        ${bodyPaths}
-      </svg>
-    `;
+    const key = String(id || pose || 'student');
+    let seed = 0;
+    for (let i = 0; i < key.length; i++) seed = ((seed << 5) - seed + key.charCodeAt(i)) | 0;
+    seed = Math.abs(seed);
+    const pick = (items, offset = 0) => items[(seed + offset * 17) % items.length];
+    const skin = pick(['#ffd7b5', '#efb27d', '#c98252', '#8e563c'], 1);
+    const hair = pick(['#27223f', '#263b65', '#6b344e', '#173f4e', '#754631'], 2);
+    const shirt = pick(['#5b6ee1', '#16a085', '#e15b8f', '#f39c4a', '#6c5ce7'], 3);
+    const bg = pick(['#dff7f4', '#fff0c7', '#e9e2ff', '#dcecff', '#ffe1ed'], 4);
+    const style = seed % 6;
+    const accessory = Math.floor(seed / 7) % 4;
+    const safeId = key.replace(/[^a-zA-Z0-9_-]/g, '').slice(-16) || 'avatar';
+    const clipId = `avatarClip_${safeId}_${style}`;
+    const hairShapes = [
+      `<path d="M24 52C21 26 34 14 50 14s29 12 26 38l-9-12c-7 2-23 1-33-6z" fill="${hair}"/>`,
+      `<path d="M25 57C17 36 28 15 50 14c22-1 34 18 27 43l-9-6-2-18c-13 8-25 5-34 0l-1 19z" fill="${hair}"/>`,
+      `<g fill="${hair}"><circle cx="30" cy="27" r="10"/><circle cx="42" cy="20" r="11"/><circle cx="56" cy="20" r="12"/><circle cx="69" cy="28" r="11"/><path d="M23 32h54v27H23z"/></g>`,
+      `<path d="M24 54c-4-25 7-40 28-40 18 0 29 13 26 36-6-12-13-18-21-21-8 10-18 14-27 13v15z" fill="${hair}"/>`,
+      `<path d="M26 58c-8-31 7-44 25-44 21 0 34 17 25 46l-8-5V33c-10 7-23 9-37 3v20z" fill="${hair}"/><circle cx="50" cy="11" r="8" fill="${hair}"/>`,
+      `<path d="M22 59c-5-26 5-45 28-45s34 20 28 46l-10-5-3-25c-9 8-22 10-34 5l1 20z" fill="${hair}"/><path d="M25 50c-8 13-5 27 4 33l8-28zm50 0c8 13 5 27-4 33l-8-28z" fill="${hair}"/>`
+    ];
+    const accessories = [
+      '',
+      `<g fill="none" stroke="#34364f" stroke-width="2.5"><circle cx="40" cy="48" r="7"/><circle cx="60" cy="48" r="7"/><path d="M47 48h6"/></g>`,
+      `<path d="M31 32c10-9 28-12 40-2l-3 7c-13-5-24-4-37 2z" fill="${shirt}"/><path d="M66 31l15 7-14 2z" fill="${shirt}"/>`,
+      `<path d="M74 26c8-15 15-10 9 4 12-9 17-1 4 8z" fill="${shirt}"/>`
+    ];
+    return `<svg class="student-avatar-svg" viewBox="0 0 100 100" width="${size}" height="${size}" role="img" aria-label="อวตารนักเรียน" xmlns="http://www.w3.org/2000/svg">
+      <defs><clipPath id="${clipId}"><circle cx="50" cy="50" r="47"/></clipPath></defs>
+      <g clip-path="url(#${clipId})">
+        <circle cx="50" cy="50" r="47" fill="${bg}"/>
+        <path d="M18 104c2-25 14-36 32-36s30 11 32 36z" fill="${shirt}"/>
+        ${hairShapes[style]}
+        <ellipse cx="50" cy="48" rx="22" ry="27" fill="${skin}"/>
+        ${style === 5 ? `<path d="M27 37c5-18 34-25 47-4-15-3-29-1-47 8z" fill="${hair}"/>` : ''}
+        <circle cx="41" cy="48" r="2.3" fill="#29243b"/><circle cx="59" cy="48" r="2.3" fill="#29243b"/>
+        <circle cx="32" cy="57" r="4" fill="#ec8290" opacity=".55"/><circle cx="68" cy="57" r="4" fill="#ec8290" opacity=".55"/>
+        <path d="M43 60q7 6 14 0" fill="none" stroke="#803c4a" stroke-width="2.2" stroke-linecap="round"/>
+        ${accessories[accessory]}
+      </g>
+      <circle cx="50" cy="50" r="47" fill="none" stroke="#fff" stroke-width="3" opacity=".9"/>
+    </svg>`;
   }
 
   render() {

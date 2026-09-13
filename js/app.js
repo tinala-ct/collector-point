@@ -3,8 +3,8 @@
  */
 
 import { WheelEngine, COLOR_PALETTES } from './wheel.js?v=1.6';
-import { QueueManager } from './queue.js';
-import { DeductManager } from './deduct.js?v=1.6';
+import { QueueManager } from './queue.js?v=1.7';
+import { DeductManager } from './deduct.js?v=1.7';
 import { sounds } from './audio.js?v=1.6';
 import { confetti } from './confetti.js';
 import { StorageManager } from './storage.js';

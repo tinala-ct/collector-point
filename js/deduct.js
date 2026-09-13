@@ -3,7 +3,7 @@
  * Manages 100-point HP health bars, 5-point deductions, sorting, and animations
  */
 
-import { QueueManager, CLAY_POSES } from './queue.js';
+import { QueueManager, CLAY_POSES } from './queue.js?v=1.7';
 import { sounds } from './audio.js?v=1.6';
 
 export class DeductManager {
