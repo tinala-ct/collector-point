@@ -4,7 +4,7 @@
  */
 
 import { QueueManager, CLAY_POSES } from './queue.js';
-import { sounds } from './audio.js';
+import { sounds } from './audio.js?v=1.6';
 
 export class DeductManager {
   constructor(containerId, options = {}) {
@@ -85,7 +85,7 @@ export class DeductManager {
 
     const displayList = this.getProcessedList();
     const totalDeductions = this.students.reduce((sum, s) => sum + (s.deductionsCount || 0), 0);
-    const totalDeductedPoints = totalDeductions * this.deductStep;
+    const totalDeductedPoints = this.students.reduce((sum, s) => sum + Math.max(0, this.initialScore - s.behaviorScore), 0);
 
     this.container.innerHTML = `
       <!-- Toolbar -->
@@ -154,7 +154,7 @@ export class DeductManager {
                   </span>
                 </div>
                 <div class="deduct-bar-track">
-                  <div class="deduct-bar-fill ${tierClass}" id="deductBarFill_${student.id}" style="width: ${percent}%;"></div>
+                  <div class="deduct-bar-fill ${tierClass}" id="deductBarFill_${student.id}" style="height: ${percent}%;"></div>
                 </div>
               </div>
 
@@ -265,7 +265,7 @@ export class DeductManager {
               </span>
             </div>
             <div class="deduct-bar-track">
-              <div class="deduct-bar-fill ${tierClass}" id="deductBarFill_${student.id}" style="width: ${percent}%;"></div>
+              <div class="deduct-bar-fill ${tierClass}" id="deductBarFill_${student.id}" style="height: ${percent}%;"></div>
             </div>
           </div>
 
@@ -306,8 +306,8 @@ export class DeductManager {
     student.behaviorScore = newScore;
     student.deductionsCount = (student.deductionsCount || 0) + 1;
 
-    // Play Sound
-    sounds.playDeduct();
+    // Sound failures must never prevent the score from being displayed or saved.
+    try { sounds.playDeduct(); } catch (error) { console.warn("Deduction sound unavailable", error); }
 
     // 1. Instant targeted DOM update for this student
     const itemEl = document.getElementById(`deductItem_${student.id}`);
@@ -331,7 +331,7 @@ export class DeductManager {
     }
 
     if (barFillEl) {
-      barFillEl.style.width = `${percent}%`;
+      barFillEl.style.height = `${percent}%`;
       barFillEl.className = `deduct-bar-fill ${tierClass}`;
     }
 
@@ -345,7 +345,7 @@ export class DeductManager {
 
     // Update Toolbar total deductions pill
     const totalDeductions = this.students.reduce((sum, s) => sum + (s.deductionsCount || 0), 0);
-    const totalDeductedPoints = totalDeductions * this.deductStep;
+    const totalDeductedPoints = this.students.reduce((sum, s) => sum + Math.max(0, this.initialScore - s.behaviorScore), 0);
     const totalPill = document.getElementById('deductTotalPill');
     if (totalPill) {
       totalPill.textContent = `💥 หักรวมทั้งห้อง: ${totalDeductions} ครั้ง (-${totalDeductedPoints} แต้ม)`;
@@ -359,14 +359,14 @@ export class DeductManager {
 
       const floater = document.createElement('div');
       floater.className = 'floating-deduct-text';
-      floater.textContent = `-${this.deductStep}`;
+      floater.textContent = `-${oldScore - newScore}`;
       itemEl.appendChild(floater);
       setTimeout(() => floater.remove(), 850);
     }
 
     // 3. Trigger callback to sync app state, history, and localStorage
     if (this.onDeduct) {
-      this.onDeduct(student, this.deductStep, oldScore);
+      this.onDeduct(student, oldScore - newScore, oldScore);
     }
   }
 

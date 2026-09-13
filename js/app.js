@@ -2,10 +2,10 @@
  * Classroom Lucky Wheel & Score Collector - Main Application Controller
  */
 
-import { WheelEngine, COLOR_PALETTES } from './wheel.js';
+import { WheelEngine, COLOR_PALETTES } from './wheel.js?v=1.6';
 import { QueueManager } from './queue.js';
-import { DeductManager } from './deduct.js';
-import { sounds } from './audio.js';
+import { DeductManager } from './deduct.js?v=1.6';
+import { sounds } from './audio.js?v=1.6';
 import { confetti } from './confetti.js';
 import { StorageManager } from './storage.js';
 import { ExportManager } from './export.js';
@@ -57,7 +57,10 @@ class ClassroomApp {
       initialScore: this.settings.initialDeductScore || 100,
       deductStep: this.settings.deductStep || 5,
       onDeduct: (student, step, oldScore) => this.handleDeductRecord(student, step, oldScore),
-      onResetAll: () => this.saveCurrentClass()
+      onResetAll: () => {
+        this.saveCurrentClass();
+        this.renderScoreboard();
+      }
     });
 
     this.bindDOM();
@@ -324,6 +327,10 @@ class ClassroomApp {
         this.settings.deductStep || 5
       );
     }
+    this.renderScoreboard();
+    document.querySelector('.game-status-bar').style.display = mode === 'deduct' ? 'none' : '';
+    this.resetScoresBtn.title = mode === 'deduct' ? 'คืนคะแนนพฤติกรรมเป็นคะแนนเต็ม' : 'ล้างคะแนนตอบคำถามเป็น 0';
+    document.querySelector('.score-table thead tr th:last-child').textContent = mode === 'deduct' ? 'การหักคะแนน' : 'ตอบถูก';
   }
 
   syncUI() {
@@ -476,7 +483,7 @@ class ClassroomApp {
             <span class="score-badge" style="color:${scoreColor}; font-weight:700;">💚 ${behScore}/${initScore}</span>
           </td>
           <td style="text-align:center; font-size:0.8rem; color:var(--text-muted);">
-            ${deductCount === 0 ? '✨ ไม่โดนหัก' : `หัก ${deductCount} ครั้ง (-${deductCount * (this.settings.deductStep || 5)})`}
+            ${deductCount === 0 ? '✨ ไม่โดนหัก' : `หัก ${deductCount} ครั้ง (-${Math.max(0, initScore - behScore)})`}
           </td>
         `;
       } else {
@@ -868,7 +875,7 @@ class ClassroomApp {
           <td style="text-align:center; font-weight:700;">${idx + 1}</td>
           <td style="font-weight:600;">${this.escapeHTML(s.name)}</td>
           <td style="text-align:center; font-weight:700; color:var(--success);">${behScore}/${initScore}</td>
-          <td style="text-align:center;">โดนหัก ${deductCount} ครั้ง (-${deductCount * (this.settings.deductStep || 5)})</td>
+          <td style="text-align:center;">โดนหัก ${deductCount} ครั้ง (-${Math.max(0, initScore - (s.behaviorScore ?? initScore))})</td>
         `;
       } else {
         const acc = s.answeredCount > 0 ? Math.round((s.correctCount / s.answeredCount) * 100) : 0;
@@ -1173,9 +1180,12 @@ class ClassroomApp {
   handleResetScores() {
     const initScore = this.settings.initialDeductScore || 100;
     (this.currentClass.students || []).forEach(s => {
+      if (this.settings.gameMode === 'deduct') {
+        s.behaviorScore = initScore;
+        s.deductionsCount = 0;
+        return;
+      }
       s.score = 0;
-      s.behaviorScore = initScore;
-      s.deductionsCount = 0;
       s.answeredCount = 0;
       s.correctCount = 0;
       s.wrongCount = 0;

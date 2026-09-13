@@ -28,7 +28,7 @@ class SoundController {
       this.initAudioContext();
     }
     if (this.audioCtx && this.audioCtx.state === 'suspended') {
-      this.audioCtx.resume();
+      this.audioCtx.resume().catch(() => {});
     }
   }
 
@@ -150,7 +150,7 @@ class SoundController {
     });
   }
 
-  // Behavior deduction sound - comical soft boop/drop
+  // Behavior deduction sound: a short bass boom with a filtered noise burst.
   playDeduct() {
     if (this.isMuted) return;
     this.ensureContextActive();
@@ -160,18 +160,33 @@ class SoundController {
       const osc = this.audioCtx.createOscillator();
       const gain = this.audioCtx.createGain();
 
+      const now = this.audioCtx.currentTime;
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(440, this.audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(140, this.audioCtx.currentTime + 0.18);
-
-      gain.gain.setValueAtTime(this.volume * 0.5, this.audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.18);
-
+      osc.frequency.setValueAtTime(150, now);
+      osc.frequency.exponentialRampToValueAtTime(38, now + 0.4);
+      gain.gain.setValueAtTime(this.volume * 0.8, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
       osc.connect(gain);
       gain.connect(this.audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.5);
 
-      osc.start();
-      osc.stop(this.audioCtx.currentTime + 0.18);
+      const buffer = this.audioCtx.createBuffer(1, Math.ceil(this.audioCtx.sampleRate * 0.25), this.audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      const noise = this.audioCtx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = this.audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(650, now);
+      const burst = this.audioCtx.createGain();
+      burst.gain.setValueAtTime(this.volume * 0.35, now);
+      burst.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      noise.connect(filter);
+      filter.connect(burst);
+      burst.connect(this.audioCtx.destination);
+      noise.start(now);
+      noise.stop(now + 0.25);
     } catch (e) {}
   }
 

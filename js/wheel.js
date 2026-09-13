@@ -2,7 +2,7 @@
  * Classroom Lucky Wheel - Canvas 2D Wheel Engine
  */
 
-import { sounds } from './audio.js';
+import { sounds } from './audio.js?v=1.6';
 
 export const COLOR_PALETTES = {
   vibrant: [
